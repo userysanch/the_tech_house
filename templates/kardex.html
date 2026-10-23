@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Kardex — The Tech House{% endblock %}
+{% block topbar_title %}Kardex de Inventario{% endblock %}
+
+{% block content %}
+<!-- Resumen por tipo -->
+<div class="row g-3 mb-4">
+    {% for clave, (etiqueta, badge) in tipos.items() %}
+    <div class="col-6 col-md-3">
+        <div class="card-dp text-center">
+            <div class="card-body-dp py-3">
+                <div class="fs-3 fw-700">{{ resumen.get(clave, 0) }}</div>
+                <span class="badge-dp {{ badge }}">{{ etiqueta }}</span>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="card-dp">
+    <div class="card-header-dp">
+        <h6><i class="ti ti-exchange"></i> Movimientos de Inventario</h6>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="btn-group btn-group-sm">
+                <a href="{{ url_for('kardex.kardex_view') }}"
+                   class="btn btn-outline-secondary {% if tipo == 'todos' %}active{% endif %}">Todos</a>
+                {% for clave, (etiqueta, badge) in tipos.items() %}
+                <a href="{{ url_for('kardex.kardex_view', tipo=clave) }}"
+                   class="btn btn-outline-secondary {% if tipo == clave %}active{% endif %}">{{ etiqueta }}</a>
+                {% endfor %}
+            </div>
+            <span class="badge-dp badge-dp-gray">{{ movimientos|length }} movimiento(s)</span>
+        </div>
+    </div>
+    <div class="card-body-dp p-0">
+        <div class="table-responsive">
+            <table class="table-dp mb-0">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th class="text-center">Tipo</th>
+                        <th>Codigo</th>
+                        <th>Producto</th>
+                        <th class="text-center">Cantidad</th>
+                        <th>Referencia</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in movimientos %}
+                    <tr>
+                        <td>{{ m.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td class="text-center">
+                            <span class="badge-dp {{ tipos[m.tipo][1] }}">{{ tipos[m.tipo][0] }}</span>
+                        </td>
+                        <td><span class="badge-dp badge-dp-gray">{{ m.codigo_producto }}</span></td>
+                        <td class="fw-600">{{ m.producto.nombre if m.producto else '—' }}</td>
+                        <td class="text-center fw-700 {% if m.cantidad < 0 %}text-danger{% else %}text-success-dp{% endif %}">
+                            {{ '+' if m.cantidad > 0 }}{{ m.cantidad }}
+                        </td>
+                        <td class="text-muted-dp">{{ m.referencia }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center text-muted-dp py-4">
+                        No hay movimientos registrados todavia.
+                        Las compras (Compras), ventas (Caja) y devoluciones los generan automaticamente.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

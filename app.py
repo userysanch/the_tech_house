@@ -34,6 +34,11 @@ def create_app():
     from routes.registros import registros_bp
     from routes.exportar import exportar_bp
     from routes.api import api_bp
+    from routes.catalogos import catalogos_bp
+    from routes.kardex import kardex_bp
+    from routes.devoluciones import devoluciones_bp
+    from routes.usuarios import usuarios_bp
+    from routes.promociones import promociones_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -47,6 +52,11 @@ def create_app():
     app.register_blueprint(registros_bp, url_prefix='/registros')
     app.register_blueprint(exportar_bp, url_prefix='/exportar')
     app.register_blueprint(api_bp)
+    app.register_blueprint(catalogos_bp, url_prefix='/catalogos')
+    app.register_blueprint(kardex_bp, url_prefix='/kardex')
+    app.register_blueprint(devoluciones_bp, url_prefix='/devoluciones')
+    app.register_blueprint(usuarios_bp, url_prefix='/usuarios')
+    app.register_blueprint(promociones_bp, url_prefix='/promociones')
 
     # Una excepcion no controlada debe dar una pagina chica y legible, no la
     # consola de depuracion de 83 KB que ngrok no puede entregar (se ve como

@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for
 from flask_login import login_required, current_user
 from extensions import db
-from models import Producto, Entrada
+from models import Producto, Entrada, Proveedor, MovimientoInventario
 from routes.registros import identificar_producto
 from datetime import datetime
 
@@ -10,6 +10,15 @@ entrada_bp = Blueprint('entrada', __name__)
 
 def _redirigir():
     return redirect(url_for('entrada.entrada_view'))
+
+
+def _id_opcion(campo):
+    """Valor entero opcional de un select del formulario."""
+    v = (request.form.get(campo) or '').strip()
+    try:
+        return int(v) if v else None
+    except ValueError:
+        return None
 
 
 @entrada_bp.route('/', methods=['GET', 'POST'])
@@ -46,6 +55,13 @@ def entrada_view():
                 stock_final = None
                 nombre_prod = codigo_prod
 
+            # Kardex: la compra eliminada se registra como ajuste negativo
+            db.session.add(MovimientoInventario(
+                codigo_producto=codigo_prod,
+                tipo='ajuste',
+                cantidad=-cant,
+                referencia=f'Compra #{entrada.id} eliminada',
+            ))
             db.session.delete(entrada)
             db.session.commit()
 
@@ -108,6 +124,14 @@ def entrada_view():
                 producto.stock += delta
 
             db.session.flush()
+
+            if delta != 0:
+                db.session.add(MovimientoInventario(
+                    codigo_producto=entrada.codigo_producto,
+                    tipo='ajuste',
+                    cantidad=delta,
+                    referencia=f'Compra #{entrada.id} editada',
+                ))
 
             costo_producto_actualizado = False
             if producto:
@@ -235,8 +259,18 @@ def entrada_view():
             cantidad=cantidad,
             costo_unitario=costo,
             upc=producto.codigo_barras,
+            proveedor_id=_id_opcion('proveedor_id'),
         )
         db.session.add(nueva_entrada)
+        db.session.flush()
+
+        # Kardex de inventario: la compra siempre deja trazabilidad
+        db.session.add(MovimientoInventario(
+            codigo_producto=producto.codigo,
+            tipo='entrada',
+            cantidad=cantidad,
+            referencia=f'Compra #{nueva_entrada.id}',
+        ))
 
         producto.stock += cantidad
         producto.costo = costo
@@ -256,4 +290,6 @@ def entrada_view():
         return _redirigir()
 
     entradas_recientes = Entrada.query.order_by(Entrada.fecha.desc()).all()
-    return render_template('entrada.html', entradas=entradas_recientes)
+    proveedores = Proveedor.query.order_by(Proveedor.nombre).all()
+    return render_template('entrada.html', entradas=entradas_recientes,
+                           proveedores=proveedores)

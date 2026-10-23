@@ -99,9 +99,43 @@ La aplicación estará disponible en `http://localhost:5000`
 - Visualización de ventas y costos
 - Totales de ventas y ganancias
 
-### 7. **Buscador**
+### 7. **Catálogos**
+- Pantalla única con pestañas: Categorías, Marcas, Proveedores, Clientes,
+  Formas de pago y Roles
+- CRUD completo con validaciones (solo administrador)
+
+### 8. **Kardex**
+- Historial de `movimientos_inventario` con filtro por tipo
+  (entrada / salida / devolución)
+- Resumen de totales por tipo (agrupado en SQL con `GROUP BY`)
+
+### 9. **Devoluciones**
+- Historial de devoluciones y armado de una nueva sobre una venta
+- Ejecuta `sp_aplicar_devolucion` (repone stock y kardex en transacción)
+
+### 10. **Usuarios y Promociones**
+- CRUD de usuarios con contraseña encriptada y rol asignado
+- Promociones con vigencia y descuento aplicado automáticamente al cobrar
+
+### 11. **Buscador**
 - Búsqueda rápida de productos
 - Filtrado por código o nombre
+
+## 🎯 Las 20 tablas en pantalla
+
+Cada tabla del modelo tiene una pantalla que la muestra o gestiona. El mapa
+completo (tabla → ruta → rol) está en [`FASE_3.md`](FASE_3.md).
+
+## 🌱 Datos de demostración
+
+```bash
+python sembrar_demo.py                                    # sembrar (solo si la BD está vacía)
+mysql -u root -p the_tech_house < limpiar_demo.sql        # borrar lo demo
+```
+
+Incluye proveedores, clientes, 6 productos con kardex, 3 ventas (dos de este
+mes y una del mes pasado), una devolución, un turno cerrado y una promoción
+activa: reportes, kardex y caja quedan con contenido.
 
 ## 📊 Estructura de la Base de Datos
 
@@ -179,5 +213,5 @@ Este proyecto es de código abierto y está disponible bajo la licencia MIT.
 
 ---
 
-**Versión:** 2.0.0  
-**Última actualización:** 2026-10-22
+**Versión:** 3.0.0  
+**Última actualización:** 2026-10-23

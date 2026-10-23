@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ cfg.titulo }} — The Tech House{% endblock %}
+{% block topbar_title %}Catalogos{% endblock %}
+
+{% block content %}
+<!-- Tabs de catalogos -->
+<ul class="nav nav-pills mb-4 flex-wrap gap-1">
+    {% for clave, t in tipos.items() %}
+    <li class="nav-item">
+        <a class="nav-link {% if clave == tipo %}active{% endif %}"
+           href="{{ url_for('catalogos.catalogo_view', tipo=clave) }}">
+            <i class="ti {{ t.icono }}"></i> {{ t.titulo }}
+        </a>
+    </li>
+    {% endfor %}
+</ul>
+
+<!-- Formulario -->
+<div class="card-dp mb-4">
+    <div class="card-header-dp">
+        <h6><i class="ti {{ cfg.icono }}"></i> {{ cfg.titulo }} — Agregar / Editar</h6>
+    </div>
+    <div class="card-body-dp">
+        <form method="POST" id="formCatalogo" class="form-dp">
+            <input type="hidden" name="action" value="crear">
+            <input type="hidden" name="id" id="id_registro">
+            <div class="row g-3">
+                {% for nombre, etiqueta, requerido, maxlen in cfg.campos %}
+                <div class="col-md-{% if cfg.campos|length == 1 %}6{% elif etiqueta in ('Nombre',) %}4{% else %}3{% endif %}">
+                    <label class="form-label">{{ etiqueta }}{% if requerido %} *{% endif %}</label>
+                    <input type="text" class="form-control" name="{{ nombre }}"
+                           id="campo_{{ nombre }}"
+                           maxlength="{{ maxlen }}" autocomplete="off"
+                           {% if requerido %}required{% endif %}
+                           placeholder="{{ etiqueta }}">
+                </div>
+                {% endfor %}
+                <div class="col-md-3 d-flex align-items-end gap-1">
+                    <button type="submit" class="btn-dp btn-dp-primary flex-grow-1">
+                        <i class="ti ti-check"></i> Guardar
+                    </button>
+                    <button type="button" class="btn-dp btn-dp-outline" onclick="limpiarForm()">
+                        <i class="ti ti-x"></i>
+                    </button>
+                </div>
+            </div>
+            <small class="text-muted-dp d-block mt-2">
+                <i class="ti ti-info-circle"></i> {{ cfg.ayuda }}
+            </small>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla -->
+<div class="card-dp">
+    <div class="card-header-dp">
+        <h6><i class="ti {{ cfg.icono }}"></i> Lista de {{ cfg.titulo }}</h6>
+        <span class="badge-dp badge-dp-gray">{{ filas|length }} registro(s)</span>
+    </div>
+    <div class="card-body-dp p-0">
+        <div class="table-responsive">
+            <table class="table-dp mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-center">#</th>
+                        {% for nombre, etiqueta, requerido, maxlen in cfg.campos %}
+                        <th>{{ etiqueta }}</th>
+                        {% endfor %}
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in filas %}
+                    <tr>
+                        <td class="text-center text-muted-dp">{{ loop.index }}</td>
+                        {% for nombre, etiqueta, requerido, maxlen in cfg.campos %}
+                        <td {% if nombre == 'nombre' %}class="fw-600"{% endif %}>
+                            {{ f|attr(nombre) if f|attr(nombre) else '—' }}
+                        </td>
+                        {% endfor %}
+                        <td class="text-center">
+                            <button class="btn-icon-dp btn-editar"
+                                    {% for nombre, etiqueta, requerido, maxlen in cfg.campos %}
+                                    data-{{ nombre }}="{{ f|attr(nombre) or '' }}"
+                                    {% endfor %}
+                                    data-id="{{ f.id }}"
+                                    title="Editar">
+                                <i class="ti ti-pencil"></i>
+                            </button>
+                            <form method="POST" class="d-inline"
+                                  onsubmit="return confirm('Eliminar este registro? Se usara si otras tablas lo referencian.');">
+                                <input type="hidden" name="action" value="eliminar">
+                                <input type="hidden" name="id" value="{{ f.id }}">
+                                <button class="btn-icon-dp danger" title="Eliminar"><i class="ti ti-trash"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="{{ cfg.campos|length + 2 }}"
+                             class="text-center text-muted-dp py-4">
+                        No hay registros. Agrega uno con el formulario de arriba.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll('.btn-editar').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.getElementById('id_registro').value = this.dataset.id;
+            {% for nombre, etiqueta, requerido, maxlen in cfg.campos %}
+            document.getElementById('campo_{{ nombre }}').value = this.dataset.{{ nombre }} || '';
+            {% endfor %}
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    });
+
+    function limpiarForm() {
+        document.getElementById('formCatalogo').reset();
+        document.getElementById('id_registro').value = '';
+    }
+</script>
+{% endblock %}

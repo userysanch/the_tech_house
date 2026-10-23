@@ -80,6 +80,117 @@
     {% endif %}
 </div>
 
+<!-- Reportes agrupados (GROUP BY en SQL) -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-4">
+        <div class="card-dp h-100">
+            <div class="card-header-dp">
+                <h6><i class="ti ti-tag"></i> Por Categoria</h6>
+                <span class="badge-dp badge-dp-primary">GROUP BY</span>
+            </div>
+            <div class="card-body-dp p-0">
+                <table class="table-dp mb-0">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th class="text-center">Items</th>
+                            <th class="text-right">Total</th>
+                            {% if current_user.rol == 'admin' %}
+                            <th class="text-right">Ganancia</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in ventas_por_categoria %}
+                        <tr>
+                            <td class="fw-600">{{ r.categoria }}</td>
+                            <td class="text-center">{{ r.items }}</td>
+                            <td class="text-right">Q{{ '%.2f'|format(r.total) }}</td>
+                            {% if current_user.rol == 'admin' %}
+                            <td class="text-right text-success-dp">Q{{ '%.2f'|format(r.ganancia) }}</td>
+                            {% endif %}
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center text-muted-dp py-3">Sin datos.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card-dp h-100">
+            <div class="card-header-dp">
+                <h6><i class="ti ti-calendar-stats"></i> Por Mes</h6>
+                <span class="badge-dp badge-dp-primary">GROUP BY</span>
+            </div>
+            <div class="card-body-dp p-0">
+                <table class="table-dp mb-0">
+                    <thead>
+                        <tr>
+                            <th>Mes</th>
+                            <th class="text-center">Ventas</th>
+                            <th class="text-right">Total</th>
+                            {% if current_user.rol == 'admin' %}
+                            <th class="text-right">Ganancia</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in ventas_por_mes %}
+                        <tr>
+                            <td class="fw-600">{{ r.mes }}</td>
+                            <td class="text-center">{{ r.ventas }}</td>
+                            <td class="text-right">Q{{ '%.2f'|format(r.total) }}</td>
+                            {% if current_user.rol == 'admin' %}
+                            <td class="text-right text-success-dp">Q{{ '%.2f'|format(r.ganancia) }}</td>
+                            {% endif %}
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center text-muted-dp py-3">Sin datos.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card-dp h-100">
+            <div class="card-header-dp">
+                <h6><i class="ti ti-trophy"></i> Top Productos</h6>
+                <span class="badge-dp badge-dp-primary">GROUP BY + LIMIT</span>
+            </div>
+            <div class="card-body-dp p-0">
+                <table class="table-dp mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Producto</th>
+                            <th class="text-center">Unidades</th>
+                            <th class="text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in top_productos %}
+                        <tr>
+                            <td class="text-center text-muted-dp">{{ loop.index }}</td>
+                            <td>
+                                <span class="badge-dp badge-dp-gray">{{ r.codigo }}</span>
+                                {{ r.nombre }}
+                            </td>
+                            <td class="text-center fw-700">{{ r.unidades }}</td>
+                            <td class="text-right">Q{{ '%.2f'|format(r.total) }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center text-muted-dp py-3">Sin datos.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Tabla -->
 <div class="card-dp">
     <div class="card-header-dp">

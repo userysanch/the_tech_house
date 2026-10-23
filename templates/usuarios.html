@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block title %}Usuarios — The Tech House{% endblock %}
+{% block topbar_title %}Usuarios y Roles{% endblock %}
+
+{% block content %}
+<!-- Formulario -->
+<div class="card-dp mb-4">
+    <div class="card-header-dp">
+        <h6><i class="ti ti-user-plus"></i> Agregar / Editar Usuario</h6>
+        <span class="badge-dp badge-dp-gray">Tabla roles: {{ roles|length }} rol(es)</span>
+    </div>
+    <div class="card-body-dp">
+        <form method="POST" id="formUsuario" class="form-dp">
+            <input type="hidden" name="action" value="crear">
+            <input type="hidden" name="id" id="id_usuario">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Usuario *</label>
+                    <input type="text" class="form-control" name="username" id="username"
+                           required maxlength="80" autocomplete="off" placeholder="Ej: vendedor2">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Nombre completo *</label>
+                    <input type="text" class="form-control" name="nombre" id="nombre"
+                           required maxlength="150" autocomplete="off">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Contrasena</label>
+                    <input type="password" class="form-control" name="password" id="password"
+                           minlength="6" required placeholder="min. 6" autocomplete="new-password">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Rol (tabla roles) *</label>
+                    <select class="form-select" name="rol_id" id="rol_id" required>
+                        {% for r in roles %}
+                        <option value="{{ r.id }}">{{ r.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-1">
+                    <button type="submit" class="btn-dp btn-dp-primary flex-grow-1">
+                        <i class="ti ti-check"></i> Guardar
+                    </button>
+                    <button type="button" class="btn-dp btn-dp-outline" onclick="limpiarForm()">
+                        <i class="ti ti-x"></i>
+                    </button>
+                </div>
+            </div>
+            <small class="text-muted-dp d-block mt-2">
+                <i class="ti ti-info-circle"></i> Al editar, deja la contrasena vacia para no cambiarla.
+                El rol define los permisos del sistema.
+            </small>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla -->
+<div class="card-dp">
+    <div class="card-header-dp">
+        <h6><i class="ti ti-users"></i> Usuarios registrados</h6>
+        <span class="badge-dp badge-dp-gray">{{ usuarios|length }} usuario(s)</span>
+    </div>
+    <div class="card-body-dp p-0">
+        <div class="table-responsive">
+            <table class="table-dp mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-center">#</th>
+                        <th>Usuario</th>
+                        <th>Nombre</th>
+                        <th class="text-center">Rol</th>
+                        <th>Descripcion del rol</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in usuarios %}
+                    <tr>
+                        <td class="text-center text-muted-dp">{{ u.id }}</td>
+                        <td><span class="badge-dp badge-dp-primary">{{ u.username }}</span></td>
+                        <td class="fw-600">{{ u.nombre }}</td>
+                        <td class="text-center">
+                            <span class="badge-dp {{ 'badge-dp-success' if u.rol == 'admin' else 'badge-dp-gray' }}">
+                                {{ u.rol_tipo.nombre if u.rol_tipo else u.rol }}
+                            </span>
+                        </td>
+                        <td class="text-muted-dp">{{ u.rol_tipo.descripcion if u.rol_tipo else '—' }}</td>
+                        <td class="text-center">
+                            <button class="btn-icon-dp btn-editar"
+                                    data-id="{{ u.id }}"
+                                    data-username="{{ u.username }}"
+                                    data-nombre="{{ u.nombre }}"
+                                    data-rol="{{ u.rol_id or '' }}"
+                                    title="Editar">
+                                <i class="ti ti-pencil"></i>
+                            </button>
+                            <form method="POST" class="d-inline"
+                                  onsubmit="return confirm('Eliminar al usuario {{ u.username }}?');">
+                                <input type="hidden" name="action" value="eliminar">
+                                <input type="hidden" name="id" value="{{ u.id }}">
+                                <button class="btn-icon-dp danger" title="Eliminar"><i class="ti ti-trash"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center text-muted-dp py-4">No hay usuarios.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll('.btn-editar').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.getElementById('username').value = this.dataset.username;
+            document.getElementById('username').readOnly = true;
+            document.getElementById('nombre').value = this.dataset.nombre;
+            document.getElementById('password').value = '';
+            document.getElementById('password').removeAttribute('required');
+            document.getElementById('rol_id').value = this.dataset.rol;
+            document.querySelector('#formUsuario [name=action]').value = 'editar';
+            document.getElementById('id_usuario').value = this.dataset.id;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    });
+
+    function limpiarForm() {
+        document.getElementById('formUsuario').reset();
+        document.getElementById('username').readOnly = false;
+        document.getElementById('password').setAttribute('required', 'required');
+        document.querySelector('#formUsuario [name=action]').value = 'crear';
+        document.getElementById('id_usuario').value = '';
+    }
+</script>
+{% endblock %}

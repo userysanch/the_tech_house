@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request
 from flask_login import login_required, current_user
 from extensions import db
-from models import DetalleVenta, Venta, Producto
+from models import DetalleVenta, Venta, Producto, Categoria
 from sqlalchemy import func
 from datetime import datetime
 import calendar
@@ -35,20 +35,21 @@ def reporte_view():
 
     query = DetalleVenta.query.join(Venta).order_by(Venta.fecha.desc())
     etiqueta = ''
+    condiciones = []
 
     if fecha_inicio or fecha_fin:
         # Rango libre: manda sobre anio/mes.
         if fecha_inicio:
             try:
                 fi = datetime.strptime(fecha_inicio, '%Y-%m-%d')
-                query = query.filter(Venta.fecha >= fi)
+                condiciones.append(Venta.fecha >= fi)
             except ValueError:
                 pass
 
         if fecha_fin:
             try:
                 ff = datetime.strptime(fecha_fin, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
-                query = query.filter(Venta.fecha <= ff)
+                condiciones.append(Venta.fecha <= ff)
             except ValueError:
                 pass
     elif anio:
@@ -60,7 +61,11 @@ def reporte_view():
             ini = datetime(anio, 1, 1)
             fin = datetime(anio, 12, 31, 23, 59, 59)
             etiqueta = f'Año {anio}'
-        query = query.filter(Venta.fecha >= ini, Venta.fecha <= fin)
+        condiciones.append(Venta.fecha >= ini)
+        condiciones.append(Venta.fecha <= fin)
+
+    for cond in condiciones:
+        query = query.filter(cond)
 
     detalles = query.all()
 
@@ -93,6 +98,79 @@ def reporte_view():
             anios.append(int(y))
     anios.sort(reverse=True)
 
+    # ---- Reportes con funciones de agrupacion (GROUP BY / SUM / COUNT) ----
+    # 1) Ventas agrupadas por categoria de producto
+    filas_cat = (
+        db.session.query(
+            Categoria.nombre,
+            func.count(DetalleVenta.id),
+            func.coalesce(func.sum(DetalleVenta.total), 0),
+            func.coalesce(func.sum(DetalleVenta.ganancia), 0),
+        )
+        .select_from(Categoria)
+        .join(Producto, Producto.categoria_id == Categoria.id)
+        .join(DetalleVenta, DetalleVenta.codigo_producto == Producto.codigo)
+        .join(Venta, Venta.id == DetalleVenta.venta_id)
+        .filter(*condiciones)
+        .group_by(Categoria.nombre)
+        .order_by(func.sum(DetalleVenta.total).desc())
+        .all()
+    )
+    ventas_por_categoria = [
+        {'categoria': f[0], 'items': int(f[1]),
+         'total': float(f[2]), 'ganancia': float(f[3])}
+        for f in filas_cat
+    ]
+
+    # 2) Ventas agrupadas por mes (DATE_FORMAT ... GROUP BY)
+    filas_mes = (
+        db.session.query(
+            func.date_format(Venta.fecha, '%Y-%m'),
+            func.count(Venta.id),
+            func.coalesce(func.sum(Venta.total_venta), 0),
+            func.coalesce(func.sum(Venta.ganancia_total), 0),
+        )
+        .filter(*condiciones)
+        .group_by(func.date_format(Venta.fecha, '%Y-%m'))
+        .order_by(func.date_format(Venta.fecha, '%Y-%m').desc())
+        .all()
+    )
+    ventas_por_mes = []
+    for f in filas_mes:
+        anio_mes = f[0] or ''
+        try:
+            aa, mm = anio_mes.split('-')
+            etiqueta_mes = f'{MESES[int(mm) - 1]} {aa}'
+        except (ValueError, IndexError):
+            etiqueta_mes = anio_mes
+        ventas_por_mes.append({
+            'clave': anio_mes, 'mes': etiqueta_mes, 'ventas': int(f[1]),
+            'total': float(f[2]), 'ganancia': float(f[3]),
+        })
+
+    # 3) Top 10 productos mas vendidos (GROUP BY ... ORDER BY ... LIMIT)
+    filas_top = (
+        db.session.query(
+            Producto.codigo,
+            Producto.nombre,
+            func.sum(DetalleVenta.cantidad),
+            func.coalesce(func.sum(DetalleVenta.total), 0),
+        )
+        .select_from(Producto)
+        .join(DetalleVenta, DetalleVenta.codigo_producto == Producto.codigo)
+        .join(Venta, Venta.id == DetalleVenta.venta_id)
+        .filter(*condiciones)
+        .group_by(Producto.codigo, Producto.nombre)
+        .order_by(func.sum(DetalleVenta.cantidad).desc())
+        .limit(10)
+        .all()
+    )
+    top_productos = [
+        {'codigo': f[0], 'nombre': f[1], 'unidades': int(f[2]),
+         'total': float(f[3])}
+        for f in filas_top
+    ]
+
     return render_template('reporte.html',
         reporte=reporte_data,
         total_ventas=total_ventas,
@@ -103,5 +181,8 @@ def reporte_view():
         meses=MESES,
         anio=anio,
         mes=mes,
-        etiqueta=etiqueta
+        etiqueta=etiqueta,
+        ventas_por_categoria=ventas_por_categoria,
+        ventas_por_mes=ventas_por_mes,
+        top_productos=top_productos,
     )

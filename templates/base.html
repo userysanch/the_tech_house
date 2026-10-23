@@ -11,6 +11,8 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+{% set rol_actual = current_user.rol_tipo.nombre if current_user.rol_tipo else current_user.rol %}
+{% set rol_texto = 'Administrador' if rol_actual == 'admin' else (rol_actual|capitalize if rol_actual else 'Empleado') %}
 
     <!-- Sidebar Overlay (mobile) -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
@@ -31,7 +33,7 @@
                 <div class="profile-avatar">{{ current_user.nombre[0] }}</div>
                 <div class="profile-info">
                     <h6>{{ current_user.nombre }}</h6>
-                    <p>{{ 'Administrador' if current_user.rol == 'admin' else 'Empleado' }}</p>
+                    <p>{{ rol_texto }}</p>
                 </div>
             </div>
         </div>
@@ -77,6 +79,18 @@
                         <span>Compras</span>
                     </a>
                 </li>
+                <li>
+                    <a class="{% if request.endpoint == 'catalogos.catalogo_view' %}active{% endif %}" href="{{ url_for('catalogos.catalogo_view', tipo='categorias') }}">
+                        <i class="ti ti-list-details"></i>
+                        <span>Catalogos</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="{% if request.endpoint == 'kardex.kardex_view' %}active{% endif %}" href="{{ url_for('kardex.kardex_view') }}">
+                        <i class="ti ti-exchange"></i>
+                        <span>Kardex</span>
+                    </a>
+                </li>
             </ul>
             {% endif %}
 
@@ -112,6 +126,20 @@
                         <span>Historial Ventas</span>
                     </a>
                 </li>
+                {% if current_user.rol == 'admin' %}
+                <li>
+                    <a class="{% if request.endpoint == 'devoluciones.devoluciones_view' %}active{% endif %}" href="{{ url_for('devoluciones.devoluciones_view') }}">
+                        <i class="ti ti-arrow-back-up"></i>
+                        <span>Devoluciones</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="{% if request.endpoint == 'promociones.promociones_view' %}active{% endif %}" href="{{ url_for('promociones.promociones_view') }}">
+                        <i class="ti ti-badge-percent"></i>
+                        <span>Promociones</span>
+                    </a>
+                </li>
+                {% endif %}
             </ul>
 
             <!-- Reports -->
@@ -133,6 +161,12 @@
                     <a class="{% if request.endpoint == 'registros.registros_view' %}active{% endif %}" href="{{ url_for('registros.registros_view') }}">
                         <i class="ti ti-file-type-xls"></i>
                         <span>Registros Nuevos</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="{% if request.endpoint == 'usuarios.usuarios_view' %}active{% endif %}" href="{{ url_for('usuarios.usuarios_view') }}">
+                        <i class="ti ti-users"></i>
+                        <span>Usuarios</span>
                     </a>
                 </li>
             </ul>
@@ -165,7 +199,7 @@
                     <div class="user-avatar">{{ current_user.nombre[0] }}</div>
                     <div class="user-info-top d-none d-sm-block">
                         <div class="name">{{ current_user.nombre }}</div>
-                        <div class="role">{{ 'Administrador' if current_user.rol == 'admin' else 'Empleado' }}</div>
+                        <div class="role">{{ rol_texto }}</div>
                     </div>
                 </div>
                 <a href="{{ url_for('auth.logout') }}" class="btn-icon-top" title="Cerrar sesion">

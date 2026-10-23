@@ -30,6 +30,35 @@
                     <input type="text" class="form-control" name="nombre" id="nombre" required maxlength="150">
                 </div>
             </div>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Categoria</label>
+                    <select class="form-select" name="categoria_id" id="categoria_id">
+                        <option value="">— Sin categoria —</option>
+                        {% for c in categorias %}
+                        <option value="{{ c.id }}">{{ c.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Marca</label>
+                    <select class="form-select" name="marca_id" id="marca_id">
+                        <option value="">— Sin marca —</option>
+                        {% for m in marcas %}
+                        <option value="{{ m.id }}">{{ m.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Proveedor</label>
+                    <select class="form-select" name="proveedor_id" id="proveedor_id">
+                        <option value="">— Sin proveedor —</option>
+                        {% for pr in proveedores %}
+                        <option value="{{ pr.id }}">{{ pr.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
             <div class="row g-3 mt-0">
                 <div class="col-md-3">
                     <label class="form-label">Costo (Q)</label>
@@ -84,6 +113,7 @@
                         <th>UPC</th>
                         <th>Codigo</th>
                         <th>Producto</th>
+                        <th>Categoria</th>
                         {% if current_user.rol == 'admin' %}
                         <th class="text-right">Costo</th>
                         <th class="text-right">Margen</th>
@@ -108,6 +138,13 @@
                         </td>
                         <td><span class="badge-dp badge-dp-primary">{{ p.codigo }}</span></td>
                         <td class="fw-600">{{ p.nombre }}</td>
+                        <td>
+                            {% if p.categoria %}
+                                <span class="badge-dp badge-dp-gray">{{ p.categoria.nombre }}</span>
+                            {% else %}
+                                <span class="text-muted-dp">—</span>
+                            {% endif %}
+                        </td>
                         {% if current_user.rol == 'admin' %}
                         <td class="text-right">Q{{ "%.2f"|format(p.costo) }}</td>
                         <td class="text-right">{{ p.margen }}%</td>
@@ -131,7 +168,10 @@
                                     data-nombre="{{ p.nombre }}"
                                     data-costo="{{ p.costo }}"
                                     data-margen="{{ p.margen }}"
-                                    data-precio="{{ p.precio }}">
+                                    data-precio="{{ p.precio }}"
+                                    data-categoria="{{ p.categoria_id or '' }}"
+                                    data-marca="{{ p.marca_id or '' }}"
+                                    data-proveedor="{{ p.proveedor_id or '' }}">
                                 <i class="ti ti-pencil"></i>
                             </button>
                             <form method="POST" class="d-inline" onsubmit="return confirm('Eliminar este producto?');">
@@ -143,7 +183,7 @@
                         {% endif %}
                     </tr>
                     {% else %}
-                    <tr><td colspan="{{ 9 if current_user.rol == 'admin' else 6 }}" class="text-center text-muted-dp py-4">No hay productos registrados.</td></tr>
+                    <tr><td colspan="{{ 10 if current_user.rol == 'admin' else 7 }}" class="text-center text-muted-dp py-4">No hay productos registrados.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -193,6 +233,9 @@
             document.getElementById('costo').value = this.dataset.costo;
             document.getElementById('margen').value = this.dataset.margen;
             document.getElementById('precio').value = this.dataset.precio;
+            document.getElementById('categoria_id').value = this.dataset.categoria || '';
+            document.getElementById('marca_id').value = this.dataset.marca || '';
+            document.getElementById('proveedor_id').value = this.dataset.proveedor || '';
             pintar('ok', 'Editando "' + this.dataset.codigo + '".');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
@@ -268,7 +311,7 @@
     'id': 'buscarInventario',
     'tabla': 'tablaInventario',
     'count': 'countInventario',
-    'cols': 9 if current_user.rol == 'admin' else 6,
+    'cols': 10 if current_user.rol == 'admin' else 7,
     'total': productos|length,
     'etiqueta': 'productos'
 } %}

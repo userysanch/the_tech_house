@@ -5,7 +5,7 @@ from flask import (Blueprint, current_app, flash, redirect, render_template,
 from flask_login import login_required, current_user
 from sqlalchemy import or_
 from extensions import db
-from models import Producto, Entrada, DetalleVenta
+from models import Producto, Entrada, DetalleVenta, Categoria, Marca, Proveedor
 
 inventario_bp = Blueprint('inventario', __name__)
 
@@ -64,6 +64,18 @@ def inventario_view():
             costo_raw = request.form.get('costo', '').strip()
             margen = request.form.get('margen', '').strip()
             precio = request.form.get('precio', '').strip()
+
+            # Relaciones con catalogos (opcionales)
+            def _id_opcion(campo):
+                v = (request.form.get(campo) or '').strip()
+                try:
+                    return int(v) if v else None
+                except ValueError:
+                    return None
+
+            categoria_id = _id_opcion('categoria_id')
+            marca_id = _id_opcion('marca_id')
+            proveedor_id = _id_opcion('proveedor_id')
 
             if not codigo or not nombre:
                 flash('Codigo y nombre son obligatorios.', 'danger')
@@ -134,6 +146,9 @@ def inventario_view():
                 producto.costo = round(costo, 2)
                 producto.margen = round(margen_val, 2)
                 producto.precio = round(precio_val, 2)
+                producto.categoria_id = categoria_id
+                producto.marca_id = marca_id
+                producto.proveedor_id = proveedor_id
 
                 # El FK de entradas propaga solo (ON UPDATE CASCADE),
                 # pero detalle_ventas no tiene FK: se actualiza a mano.
@@ -159,6 +174,9 @@ def inventario_view():
                 margen=round(margen_val, 2),
                 precio=round(precio_val, 2),
                 stock=0,
+                categoria_id=categoria_id,
+                marca_id=marca_id,
+                proveedor_id=proveedor_id,
             )
             db.session.add(nuevo)
             db.session.commit()
@@ -201,4 +219,9 @@ def inventario_view():
                  .distinct()
                  .order_by(Producto.id.asc())
                  .all())
-    return render_template('inventario.html', productos=productos)
+    categorias = Categoria.query.order_by(Categoria.nombre).all()
+    marcas = Marca.query.order_by(Marca.nombre).all()
+    proveedores = Proveedor.query.order_by(Proveedor.nombre).all()
+    return render_template('inventario.html', productos=productos,
+                           categorias=categorias, marcas=marcas,
+                           proveedores=proveedores)

@@ -261,6 +261,109 @@
 {% endblock %}
 
 {% block content %}
+<!-- Turno de Caja -->
+<div class="card-dp mb-4">
+    <div class="card-header-dp">
+        <h6><i class="ti ti-cash-banknote"></i> Turno de Caja</h6>
+        {% if turno %}
+        <span class="badge-dp badge-dp-success">Turno #{{ turno.id }} abierto</span>
+        {% else %}
+        <span class="badge-dp badge-dp-danger">Sin turno abierto</span>
+        {% endif %}
+    </div>
+    <div class="card-body-dp">
+        {% if not turno %}
+        <form method="POST" class="form-dp">
+            <input type="hidden" name="action" value="abrir_turno">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Saldo inicial (Q)</label>
+                    <input type="number" step="0.01" min="0" class="form-control"
+                           name="saldo_inicial" value="0" required>
+                </div>
+                <div class="col-md-3 d-grid">
+                    <button type="submit" class="btn-dp btn-dp-primary">
+                        <i class="ti ti-lock-open"></i> Abrir turno
+                    </button>
+                </div>
+                <div class="col-md-6">
+                    <small class="text-muted-dp">
+                        <i class="ti ti-info-circle"></i> Al abrir el turno, cada venta
+                        queda registrada en <strong>movimientos_caja</strong> y el cierre
+                        calcula el saldo con <strong>sp_cerrar_caja</strong>.
+                    </small>
+                </div>
+            </div>
+        </form>
+        {% else %}
+        <div class="row g-3 align-items-end">
+            <div class="col-6 col-md-2">
+                <div class="text-muted-dp" style="font-size:.75rem">Saldo inicial</div>
+                <div class="fw-700">Q{{ '%.2f'|format(turno.saldo_inicial) }}</div>
+            </div>
+            <div class="col-6 col-md-2">
+                <div class="text-muted-dp" style="font-size:.75rem">Saldo actual</div>
+                <div class="fw-700 text-success-dp">Q{{ '%.2f'|format(saldo_actual) }}</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-muted-dp" style="font-size:.75rem">Abierto</div>
+                <div>{{ turno.fecha_apertura.strftime('%d/%m/%Y %H:%M') }}</div>
+            </div>
+            <div class="col-6 col-md-5 text-end d-flex gap-2 justify-content-end">
+                <form method="POST" class="d-flex gap-2" onsubmit="return confirm('Cerrar el turno? Se calcula el saldo final y no se podra seguir cobrando en el.');">
+                    <input type="hidden" name="action" value="cerrar_turno">
+                    <button type="submit" class="btn-dp btn-dp-danger">
+                        <i class="ti ti-lock"></i> Cerrar caja
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% if movimientos %}
+        <div class="table-responsive mt-3">
+            <table class="table-dp mb-0" style="font-size:.85rem">
+                <thead><tr><th>Hora</th><th>Tipo</th><th>Descripcion</th><th class="text-right">Monto</th></tr></thead>
+                <tbody>
+                    {% for mv in movimientos %}
+                    <tr>
+                        <td>{{ mv.fecha.strftime('%H:%M') }}</td>
+                        <td><span class="badge-dp {{ 'badge-dp-success' if mv.tipo in ('ingreso','venta') else 'badge-dp-warning' }}">{{ mv.tipo }}</span></td>
+                        <td class="text-muted-dp">{{ mv.descripcion }}</td>
+                        <td class="text-right {% if mv.tipo in ('ingreso','venta') %}text-success-dp{% else %}text-danger{% endif %}">
+                            {{ '+' if mv.tipo in ('ingreso','venta') else '-' }}Q{{ '%.2f'|format(mv.monto) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+        <details class="mt-3">
+            <summary style="cursor:pointer"><i class="ti ti-plus-minus"></i> Registrar ingreso / egreso del turno</summary>
+            <form method="POST" class="form-dp mt-2">
+                <input type="hidden" name="action" value="movimiento_caja">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <select class="form-select" name="tipo">
+                            <option value="ingreso">Ingreso</option>
+                            <option value="egreso">Egreso</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="number" step="0.01" min="0.01" class="form-control" name="monto" placeholder="Monto (Q)" required>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="descripcion" maxlength="150" placeholder="Descripcion">
+                    </div>
+                    <div class="col-md-2 d-grid">
+                        <button type="submit" class="btn-dp btn-dp-outline">Guardar</button>
+                    </div>
+                </div>
+            </form>
+        </details>
+        {% endif %}
+    </div>
+</div>
+
 <!-- Busqueda -->
 <div class="card-dp mb-4">
     <div class="card-body-dp">
@@ -351,6 +454,25 @@
                 <div class="amount" id="modalTotal">Q0.00</div>
             </div>
             <div class="pos-input-group">
+                <label>Cliente (tabla clientes)</label>
+                <select class="form-select" id="selectCliente" style="font-size:1rem">
+                    <option value="">— Consumidor final —</option>
+                    {% for cl in clientes %}
+                    <option value="{{ cl.id }}">{{ cl.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="pos-input-group">
+                <label>Forma de pago (tabla formas_pago)</label>
+                <div class="d-flex gap-2 flex-wrap" id="formasPago">
+                    {% for f in formas %}
+                    <button type="button"
+                            class="btn btn-sm btn-outline-primary forma-pago-btn{% if loop.first %} active{% endif %}"
+                            data-id="{{ f.id }}" data-nombre="{{ f.nombre }}">{{ f.nombre }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="pos-input-group" id="grupoEfectivo">
                 <label>Efectivo recibido</label>
                 <div class="input-wrapper">
                     <span class="input-prefix">Q</span>
@@ -383,6 +505,43 @@
     let seleccionActual = null;
     let debounceTimer = null;
     const ES_ADMIN = {{ 'true' if current_user.rol == 'admin' else 'false' }};
+    const FORMAS = {{ formas_json|tojson }};
+    let formaPagoActual = FORMAS.length ? FORMAS[0] : null;
+    let clienteId = '';
+
+    // ---- Cliente y forma de pago en el modal de cobro ----
+    document.getElementById('selectCliente').addEventListener('change', function() {
+        clienteId = this.value;
+    });
+
+    document.querySelectorAll('.forma-pago-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.forma-pago-btn').forEach(function(b) { b.classList.remove('active'); });
+            this.classList.add('active');
+            formaPagoActual = { id: parseInt(this.dataset.id, 10), nombre: this.dataset.nombre };
+            aplicarFormaPago();
+        });
+    });
+
+    function esEfectivo() {
+        return !formaPagoActual || formaPagoActual.nombre === 'Efectivo';
+    }
+
+    function aplicarFormaPago() {
+        const grupo = document.getElementById('grupoEfectivo');
+        const cambio = document.getElementById('cambioDisplay');
+        const btn = document.getElementById('btnConfirmar');
+        if (esEfectivo()) {
+            grupo.style.display = '';
+            calcularCambio();
+        } else {
+            // Tarjeta / transferencia: no se cuenta efectivo, se confirma directo
+            document.getElementById('inputEfectivo').value = '';
+            grupo.style.display = 'none';
+            cambio.style.display = 'none';
+            btn.disabled = totalActual <= 0;
+        }
+    }
 
     const inputBuscar = document.getElementById('inputBuscar');
     const dropdown = document.getElementById('dropdownBuscar');
@@ -460,7 +619,11 @@
                     '</div>' +
                 '</div>' +
                 '<div class="pos-search-item-right">' +
-                    '<div class="pos-search-item-price">Q' + p.precio.toFixed(2) + '</div>' +
+                    (p.promo
+                        ? '<div class="pos-search-item-price" style="text-decoration:line-through;opacity:.6;font-size:.8rem">Q' + p.precio_original.toFixed(2) + '</div>' +
+                          '<div class="pos-search-item-price" style="color:var(--danger)">Q' + p.precio.toFixed(2) + '</div>' +
+                          '<div class="pos-search-item-stock" style="color:var(--danger)">' + p.promo + '</div>'
+                        : '<div class="pos-search-item-price">Q' + p.precio.toFixed(2) + '</div>') +
                     '<div class="pos-search-item-stock ' + stockClass + '">Stock: ' + p.stock + '</div>' +
                 '</div>';
             item.addEventListener('click', () => agregarAlCarrito(p));
@@ -598,7 +761,10 @@
         document.getElementById('cambioDisplay').style.display = 'none';
         document.getElementById('btnConfirmar').disabled = true;
         document.getElementById('modalCobro').style.display = 'flex';
-        setTimeout(() => document.getElementById('inputEfectivo').focus(), 100);
+        aplicarFormaPago();
+        if (esEfectivo()) {
+            setTimeout(() => document.getElementById('inputEfectivo').focus(), 100);
+        }
     }
 
     function cerrarModalCobro(e) {
@@ -641,7 +807,11 @@
         const response = await fetch('/caja/registrar', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({carrito: carrito})
+            body: JSON.stringify({
+                carrito: carrito,
+                cliente_id: clienteId ? parseInt(clienteId, 10) : null,
+                forma_pago_id: formaPagoActual ? formaPagoActual.id : null
+            })
         });
         const data = await response.json();
 
