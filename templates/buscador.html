@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+
+{% block title %}Buscador — The Tech House{% endblock %}
+{% block topbar_title %}Buscador de Productos{% endblock %}
+
+{% block content %}
+<!-- Busqueda -->
+<div class="card-dp mb-4">
+    <div class="card-body-dp">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-9">
+                <label class="form-label">Buscar producto</label>
+                <div class="search-input-wrap">
+                    <i class="ti ti-search search-icon"></i>
+                    <input type="text" class="form-control form-control-lg search-input" id="buscadorInput"
+                           placeholder="Escribe para buscar... Ej: canon gi, tinta nkt, mouse logitech"
+                           value="{{ query }}" autofocus autocomplete="off">
+                    <div class="search-spinner" id="searchSpinner" style="display:none;">
+                        <span class="spinner-dp"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 d-grid">
+                <button type="button" class="btn-dp btn-dp-outline btn-dp-lg" onclick="limpiarBusqueda()">
+                    <i class="ti ti-x"></i> Limpiar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resultados -->
+<div class="card-dp">
+    <div class="card-header-dp">
+        <h6><i class="ti ti-list"></i> Resultados</h6>
+        <span class="badge-dp badge-dp-gray" id="resultCount">{{ productos|length }} encontrado(s)</span>
+    </div>
+    <div class="card-body-dp p-0">
+        <div class="table-responsive">
+            <table class="table-dp mb-0" id="resultTable">
+                <thead>
+                    <tr>
+                        <th>UPC</th>
+                        <th>Codigo</th>
+                        <th>Producto</th>
+                        <th class="text-right">Precio</th>
+                        <th class="text-center">Stock</th>
+                        {% if current_user.rol == 'admin' %}
+                        <th class="text-center">Acciones</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody id="resultBody">
+                    {% for p in productos %}
+                    <tr class="row-animate">
+                        <td>
+                            {% if p.codigo_barras %}
+                                <span class="badge-dp badge-dp-gray">{{ p.codigo_barras }}</span>
+                            {% else %}
+                                <span class="text-muted-dp">—</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge-dp badge-dp-primary">{{ p.codigo_resaltado|safe }}</span></td>
+                        <td class="fw-600">{{ p.nombre_resaltado|safe }}</td>
+                        <td class="text-right fw-700 text-success-dp">Q{{ "%.2f"|format(p.precio) }}</td>
+                        <td class="text-center">
+                            {% if p.stock > 5 %}
+                                <span class="badge-dp badge-dp-success">{{ p.stock }}</span>
+                            {% elif p.stock > 0 %}
+                                <span class="badge-dp badge-dp-warning">{{ p.stock }}</span>
+                            {% else %}
+                                <span class="badge-dp badge-dp-danger">Agotado</span>
+                            {% endif %}
+                        </td>
+                        {% if current_user.rol == 'admin' %}
+                        <td class="text-center">
+                            <button type="button" class="btn-icon-dp btn-editar"
+                                    data-id="{{ p.id }}"
+                                    data-upc="{{ p.codigo_barras }}"
+                                    data-codigo="{{ p.codigo }}"
+                                    data-nombre="{{ p.nombre }}"
+                                    title="Editar producto">
+                                <i class="ti ti-pencil"></i>
+                            </button>
+                            <button type="button" class="btn-icon-dp danger btn-eliminar"
+                                    data-id="{{ p.id }}"
+                                    data-codigo="{{ p.codigo }}"
+                                    title="Eliminar producto">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% else %}
+                    <tr id="emptyState">
+                        <td colspan="{{ 6 if current_user.rol == 'admin' else 5 }}"
+                            class="text-center text-muted-dp py-4">
+                            {% if query %}
+                                <i class="ti ti-search-off" style="font-size:2rem;opacity:.3;"></i><br>
+                                No se encontraron productos para "<strong>{{ query }}</strong>"
+                            {% else %}
+                                <i class="ti ti-search" style="font-size:2rem;opacity:.3;"></i><br>
+                                Escribe en el buscador para encontrar productos
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% include '_modal_producto.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const input = document.getElementById('buscadorInput');
+    const tbody = document.getElementById('resultBody');
+    const countBadge = document.getElementById('resultCount');
+    const spinner = document.getElementById('searchSpinner');
+    const ES_ADMIN = {{ 'true' if current_user.rol == 'admin' else 'false' }};
+    const COLS = {{ 6 if current_user.rol == 'admin' else 5 }};
+    let debounceTimer = null;
+
+    input.addEventListener('input', function() {
+        const query = this.value.trim();
+        clearTimeout(debounceTimer);
+
+        if (query.length < 1) {
+            mostrarVacio('Escribe en el buscador para encontrar productos', 'ti-search');
+            countBadge.textContent = '0 encontrado(s)';
+            return;
+        }
+
+        spinner.style.display = 'inline-block';
+
+        debounceTimer = setTimeout(() => {
+            fetch(`/buscador/api/buscar?q=${encodeURIComponent(query)}`)
+                .then(r => r.json())
+                .then(data => {
+                    spinner.style.display = 'none';
+                    countBadge.textContent = `${data.length} encontrado(s)`;
+
+                    if (data.length === 0) {
+                        mostrarVacio(`No se encontraron productos para "<strong>${query}</strong>"`, 'ti-search-off');
+                        return;
+                    }
+
+                    let html = '';
+                    data.forEach(p => {
+                        const stockBadge = p.stock > 5
+                            ? `<span class="badge-dp badge-dp-success">${p.stock}</span>`
+                            : p.stock > 0
+                                ? `<span class="badge-dp badge-dp-warning">${p.stock}</span>`
+                                : `<span class="badge-dp badge-dp-danger">Agotado</span>`;
+
+                        const upcCelda = p.codigo_barras
+                            ? `<span class="badge-dp badge-dp-gray">${esc(p.codigo_barras)}</span>`
+                            : `<span class="text-muted-dp">—</span>`;
+
+                        const acciones = ES_ADMIN ? `
+                            <td class="text-center">
+                                <button type="button" class="btn-icon-dp btn-editar"
+                                        data-id="${p.id}" data-upc="${esc(p.codigo_barras || '')}"
+                                        data-codigo="${esc(p.codigo)}" data-nombre="${esc(p.nombre)}"
+                                        title="Editar producto"><i class="ti ti-pencil"></i></button>
+                                <button type="button" class="btn-icon-dp danger btn-eliminar"
+                                        data-id="${p.id}" data-codigo="${esc(p.codigo)}"
+                                        title="Eliminar producto"><i class="ti ti-trash"></i></button>
+                            </td>` : '';
+
+                        html += `
+                            <tr class="row-animate">
+                                <td>${upcCelda}</td>
+                                <td><span class="badge-dp badge-dp-primary">${p.codigo_resaltado}</span></td>
+                                <td class="fw-600">${p.nombre_resaltado}</td>
+                                <td class="text-right fw-700 text-success-dp">${p.precio_fmt}</td>
+                                <td class="text-center">${stockBadge}</td>
+                                ${acciones}
+                            </tr>`;
+                    });
+                    tbody.innerHTML = html;
+                })
+                .catch(() => {
+                    spinner.style.display = 'none';
+                    mostrarVacio('Error al buscar. Intenta de nuevo.', 'ti-alert-triangle');
+                });
+        }, 300);
+    });
+
+    function esc(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                         .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function mostrarVacio(mensaje, icono) {
+        tbody.innerHTML = `
+            <tr><td colspan="${COLS}" class="text-center text-muted-dp py-4">
+                <i class="${icono}" style="font-size:2rem;opacity:.3;"></i><br>${mensaje}
+            </td></tr>`;
+    }
+
+    function limpiarBusqueda() {
+        input.value = '';
+        input.focus();
+        mostrarVacio('Escribe en el buscador para encontrar productos', 'ti-search');
+        countBadge.textContent = '0 encontrado(s)';
+    }
+
+    // Acciones: delegacion para funcionar tambien en filas pintadas por JS
+    tbody.addEventListener('click', function(ev) {
+        const btn = ev.target.closest('.btn-editar, .btn-eliminar');
+        if (!btn) return;
+
+        if (btn.classList.contains('btn-eliminar')) {
+            if (typeof eliminarProducto === 'function') {
+                eliminarProducto(btn.dataset.id, btn.dataset.codigo);
+            }
+            return;
+        }
+        if (typeof abrirModalProducto === 'function') {
+            abrirModalProducto({
+                id: btn.dataset.id,
+                upc: btn.dataset.upc || '',
+                codigo: btn.dataset.codigo || '',
+                nombre: btn.dataset.nombre || ''
+            });
+        }
+    });
+</script>
+{% endblock %}

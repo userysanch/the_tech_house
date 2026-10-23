@@ -1,0 +1,133 @@
+{% if current_user.rol == 'admin' %}
+<!-- Modal de Compras: editar fecha/cantidad/costo de la compra y datos del producto -->
+<div class="dp-modal-backdrop" id="modalCompraBack" style="display:none"
+     onclick="cerrarModalCompra(event)">
+    <div class="dp-modal" style="max-width:560px" onclick="event.stopPropagation()">
+        <div class="dp-modal-header">
+            <h5><i class="ti ti-pencil"></i> Editar compra</h5>
+            <button type="button" class="dp-modal-close" onclick="cerrarModalCompra()">
+                <i class="ti ti-x"></i>
+            </button>
+        </div>
+
+        <div class="dp-modal-body">
+            <div class="dp-modal-seccion">
+                <i class="ti ti-shopping-cart"></i> Compra
+            </div>
+
+            <form method="POST" action="{{ url_for('entrada.entrada_view') }}" id="formEditarCompra">
+                <input type="hidden" name="action" value="editar_entrada">
+                <input type="hidden" name="id_entrada" id="mcIdEntrada">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Fecha</label>
+                        <input type="datetime-local" class="form-control" name="fecha"
+                               id="mcFecha" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Cantidad *</label>
+                        <input type="number" class="form-control" name="cantidad"
+                               id="mcCantidad" min="1" step="1" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Costo Unitario (Q) *</label>
+                        <input type="number" class="form-control" name="costo"
+                               id="mcCosto" min="0.01" step="0.01" required>
+                    </div>
+                </div>
+                <p class="dp-modal-nota mb-0 mt-2">
+                    <i class="ti ti-info-circle"></i>
+                    Si cambia la cantidad se ajusta el stock en Inventario.
+                </p>
+            </form>
+
+            <hr class="dp-modal-sep">
+
+            <div class="dp-modal-seccion">
+                <i class="ti ti-box"></i> Producto
+                <span id="mcProdRef"></span>
+            </div>
+
+            <form method="POST" action="{{ url_for('registros.registros_view') }}" id="formEditarCompraProducto">
+                <input type="hidden" name="action" value="editar">
+                <input type="hidden" name="id_producto" id="mcIdProducto">
+                <div class="row g-3">
+                    <div class="col-4">
+                        <label class="form-label">UPC</label>
+                        <input type="text" class="form-control" name="upc" id="mcUpc"
+                               maxlength="50" autocomplete="off" placeholder="Codigo de barras">
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label">Codigo *</label>
+                        <input type="text" class="form-control" name="codigo" id="mcCodigo"
+                               maxlength="50" autocomplete="off" required>
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label">Descripcion *</label>
+                        <input type="text" class="form-control" name="descripcion" id="mcDesc"
+                               maxlength="150" autocomplete="off" required>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="dp-modal-footer">
+            <span class="dp-modal-nota">Se edita solo esta compra</span>
+            <div class="dp-modal-footer-right">
+                <button type="button" class="btn-dp btn-dp-outline" onclick="cerrarModalCompra()">
+                    Cancelar
+                </button>
+                <button type="button" class="btn-dp btn-dp-outline" id="btnMcGuardarProducto">
+                    <i class="ti ti-device-floppy"></i> Guardar producto
+                </button>
+                <button type="button" class="btn-dp btn-dp-primary" id="btnMcGuardarCompra">
+                    <i class="ti ti-check"></i> Guardar compra
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var backdrop = document.getElementById('modalCompraBack');
+    if (!backdrop) return;
+
+    window.abrirModalCompra = function(d) {
+        document.getElementById('mcIdEntrada').value = d.id_entrada || '';
+        document.getElementById('mcFecha').value = d.fecha || '';
+        document.getElementById('mcCantidad').value = d.cantidad || '';
+        document.getElementById('mcCosto').value = d.costo || '';
+        document.getElementById('mcIdProducto').value = d.id_producto || '';
+        document.getElementById('mcUpc').value = d.upc || '';
+        document.getElementById('mcCodigo').value = d.codigo || '';
+        document.getElementById('mcDesc').value = d.nombre || '';
+        document.getElementById('mcProdRef').textContent =
+            d.codigo ? d.codigo + ' — ' + (d.nombre || '') : '';
+        backdrop.style.display = 'flex';
+        setTimeout(function() { document.getElementById('mcFecha').focus(); }, 60);
+    };
+
+    window.cerrarModalCompra = function(ev) {
+        if (ev && ev.target !== ev.currentTarget) return;
+        backdrop.style.display = 'none';
+    };
+
+    document.getElementById('btnMcGuardarCompra').addEventListener('click', function() {
+        var f = document.getElementById('formEditarCompra');
+        if (f.reportValidity()) f.submit();
+    });
+
+    document.getElementById('btnMcGuardarProducto').addEventListener('click', function() {
+        var f = document.getElementById('formEditarCompraProducto');
+        if (f.reportValidity()) f.submit();
+    });
+
+    document.addEventListener('keydown', function(ev) {
+        if (ev.key === 'Escape' && backdrop.style.display === 'flex') {
+            cerrarModalCompra();
+        }
+    });
+})();
+</script>
+{% endif %}

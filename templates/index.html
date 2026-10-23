@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard — The Tech House{% endblock %}
+{% block topbar_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="stat-card-dp">
+            <div class="stat-icon-dp primary"><i class="ti ti-box"></i></div>
+            <div class="stat-info-dp">
+                <h3>{{ total_productos }}</h3>
+                <p>Total Productos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="stat-card-dp">
+            <div class="stat-icon-dp warning"><i class="ti ti-trending-up-2"></i></div>
+            <div class="stat-info-dp">
+                <h3>{{ stock_bajo }}</h3>
+                <p>Stock Bajo</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="stat-card-dp">
+            <div class="stat-icon-dp success"><i class="ti ti-cash"></i></div>
+            <div class="stat-info-dp">
+                <h3>Q{{ "%.2f"|format(ventas_hoy) }}</h3>
+                <p>Ventas Hoy</p>
+            </div>
+        </div>
+    </div>
+    {% if current_user.rol == 'admin' %}
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="stat-card-dp">
+            <div class="stat-icon-dp teal"><i class="ti ti-chart-line"></i></div>
+            <div class="stat-info-dp">
+                <h3>Q{{ "%.2f"|format(ganancia_hoy) }}</h3>
+                <p>Ganancia Hoy</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Module Grid -->
+<div class="row g-3">
+    {% if current_user.rol == 'admin' %}
+    <div class="col-6 col-md-4 col-lg-3">
+        <a href="{{ url_for('inventario.inventario_view') }}" class="module-card-dp">
+            <div class="module-icon-dp" style="background:rgba(254,159,67,.1);color:#FE9F43;">
+                <i class="ti ti-box"></i>
+            </div>
+            <h6>Inventario</h6>
+            <p>Gestionar productos</p>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-lg-3">
+        <a href="{{ url_for('entrada.entrada_view') }}" class="module-card-dp">
+            <div class="module-icon-dp" style="background:rgba(255,202,24,.15);color:#c9a000;">
+                <i class="ti ti-package-import"></i>
+            </div>
+            <h6>Compras</h6>
+            <p>Registrar mercancia</p>
+        </a>
+    </div>
+    {% endif %}
+    <div class="col-6 col-md-4 col-lg-3">
+        <a href="{{ url_for('caja.caja_view') }}" class="module-card-dp">
+            <div class="module-icon-dp" style="background:rgba(62,183,128,.1);color:#3EB780;">
+                <i class="ti ti-device-laptop"></i>
+            </div>
+            <h6>Caja</h6>
+            <p>Punto de venta</p>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-lg-3">
+        <a href="{{ url_for('ventas.ventas_view') }}" class="module-card-dp">
+            <div class="module-icon-dp" style="background:rgba(105,56,239,.1);color:#6938EF;">
+                <i class="ti ti-receipt"></i>
+            </div>
+            <h6>Ventas</h6>
+            <p>Historial</p>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-lg-3">
+        <a href="{{ url_for('reporte.reporte_view') }}" class="module-card-dp">
+            <div class="module-icon-dp" style="background:rgba(221,37,144,.1);color:#DD2590;">
+                <i class="ti ti-chart-bar"></i>
+            </div>
+            <h6>Reportes</h6>
+            <p>Ganancias</p>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-lg-3">
+        <a href="{{ url_for('buscador.buscador_view') }}" class="module-card-dp">
+            <div class="module-icon-dp" style="background:rgba(6,174,212,.1);color:#06AED4;">
+                <i class="ti ti-search"></i>
+            </div>
+            <h6>Buscador</h6>
+            <p>Buscar productos</p>
+        </a>
+    </div>
+</div>
+{% endblock %}

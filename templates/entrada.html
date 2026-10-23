@@ -1,0 +1,263 @@
+{% extends 'base.html' %}
+
+{% block title %}Compras — The Tech House{% endblock %}
+{% block topbar_title %}Registro de Compras{% endblock %}
+
+{% block content %}
+<!-- Formulario -->
+<div class="card-dp mb-4">
+    <div class="card-header-dp">
+        <h6><i class="ti ti-package-import"></i> Nueva Compra</h6>
+        <span class="badge-dp badge-dp-gray">Matriz: Registros Nuevos</span>
+    </div>
+    <div class="card-body-dp">
+        <form method="POST" class="form-dp">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">UPC</label>
+                    <input type="text" class="form-control" name="upc" id="inputUpcCompra"
+                           placeholder="Escanea o teclea" autocomplete="off" autofocus maxlength="50">
+                    <div class="mensaje-matriz" id="mensajeMatriz"></div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Codigo</label>
+                    <input type="text" class="form-control" name="codigo" id="inputCodigoCompra"
+                           placeholder="Ej: P001" autocomplete="off" maxlength="50">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Nombre (si es nuevo)</label>
+                    <input type="text" class="form-control" name="nombre" id="inputNombreCompra"
+                           placeholder="Opcional si ya existe" maxlength="150" autocomplete="off">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Cantidad</label>
+                    <input type="number" class="form-control" name="cantidad" min="1" required>
+                </div>
+            </div>
+            <div class="row g-3 mt-0">
+                <div class="col-md-3">
+                    <label class="form-label">Costo Unit. (Q)</label>
+                    <input type="number" step="0.01" min="0.01" class="form-control"
+                           name="costo" id="inputCostoCompra" required>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn-dp btn-dp-success w-100">
+                        <i class="ti ti-check"></i> Registrar Compra
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla -->
+<div class="card-dp">
+    <div class="card-header-dp">
+        <h6><i class="ti ti-clock"></i> Ultimas Compras</h6>
+        <div class="d-flex align-items-center gap-2">
+            <div class="form-dp">
+                <div class="search-input-wrap" style="width:300px;">
+                    <i class="ti ti-search search-icon"></i>
+                    <input type="text" class="form-control search-input" id="buscarCompras"
+                           placeholder="Buscar fecha, UPC, codigo o producto..." autocomplete="off">
+                </div>
+            </div>
+            <span class="badge-dp badge-dp-gray" id="countCompras">{{ entradas|length }} compras</span>
+            <a href="{{ url_for('exportar.exportar_excel', hoja='compras') }}"
+               class="btn-dp btn-dp-success btn-dp-sm">
+                <i class="ti ti-file-spreadsheet"></i> Exportar Excel
+            </a>
+        </div>
+    </div>
+    <div class="card-body-dp p-0">
+        <div class="table-responsive">
+            <table class="table-dp mb-0">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>UPC</th>
+                        <th>Codigo</th>
+                        <th>Producto</th>
+                        <th class="text-center">Cantidad</th>
+                        <th class="text-right">Costo Unit.</th>
+                        <th class="text-right">Total</th>
+                        {% if current_user.rol == 'admin' %}
+                        <th class="text-center">Acciones</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody id="tablaCompras">
+                    {% if entradas %}
+                        {% for e in entradas %}
+                        <tr data-buscar="{{ (e.fecha.strftime('%d/%m/%Y %H:%M') ~ ' ' ~
+                                             (e.upc or '') ~ ' ' ~
+                                             (e.producto.codigo_barras or '') ~ ' ' ~
+                                             e.codigo_producto ~ ' ' ~
+                                             e.producto.nombre)|lower }}">
+                            <td>{{ e.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>
+                                {% if e.upc %}
+                                    <span class="badge-dp badge-dp-primary">{{ e.upc }}</span>
+                                {% else %}
+                                    <span class="text-muted-dp">—</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="badge-dp badge-dp-gray">{{ e.codigo_producto }}</span></td>
+                            <td class="fw-600">{{ e.producto.nombre }}</td>
+                            <td class="text-center">{{ e.cantidad }}</td>
+                            <td class="text-right">Q{{ "%.2f"|format(e.costo_unitario) }}</td>
+                            <td class="text-right fw-700">Q{{ "%.2f"|format(e.cantidad * e.costo_unitario) }}</td>
+                            {% if current_user.rol == 'admin' %}
+                            <td class="text-center">
+                                <button type="button" class="btn-icon-dp btn-editar"
+                                        data-entrada="{{ e.id }}"
+                                        data-fecha="{{ e.fecha.strftime('%Y-%m-%dT%H:%M') }}"
+                                        data-cantidad="{{ e.cantidad }}"
+                                        data-costo="{{ '%.2f'|format(e.costo_unitario) }}"
+                                        data-id="{{ e.producto.id }}"
+                                        data-upc="{{ e.producto.codigo_barras or '' }}"
+                                        data-codigo="{{ e.codigo_producto }}"
+                                        data-nombre="{{ e.producto.nombre }}"
+                                        title="Editar compra">
+                                    <i class="ti ti-pencil"></i>
+                                </button>
+                                <form method="POST" class="d-inline">
+                                    <input type="hidden" name="action" value="eliminar_entrada">
+                                    <input type="hidden" name="id_entrada" value="{{ e.id }}">
+                                    <button type="submit" class="btn-icon-dp danger btn-del-entrada"
+                                            data-cantidad="{{ e.cantidad }}"
+                                            data-stock="{{ e.producto.stock }}"
+                                            data-nombre="{{ e.producto.nombre }}"
+                                            title="Eliminar compra">
+                                        <i class="ti ti-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="{{ 8 if current_user.rol == 'admin' else 7 }}"
+                                class="text-center text-muted-dp py-4">No hay compras registradas.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% include '_modal_compra.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    var upc = document.getElementById('inputUpcCompra');
+    var codigo = document.getElementById('inputCodigoCompra');
+    var nombre = document.getElementById('inputNombreCompra');
+    var msg = document.getElementById('mensajeMatriz');
+    var timer = null;
+
+    function sincronizar() {
+        if (upc.value.trim()) {
+            codigo.removeAttribute('required');
+        } else {
+            codigo.setAttribute('required', 'required');
+        }
+    }
+
+    function pintar(tipo, texto) {
+        if (!tipo) { msg.className = 'mensaje-matriz'; msg.innerHTML = ''; return; }
+        var icono = tipo === 'ok' ? 'ti-circle-check'
+                  : tipo === 'warn' ? 'ti-alert-triangle' : 'ti-circle-x';
+        msg.className = 'mensaje-matriz ' + tipo;
+        msg.innerHTML = '<i class="ti ' + icono + '"></i> <span>' + texto + '</span>';
+    }
+
+    function consultar() {
+        var u = upc.value.trim(), c = codigo.value.trim();
+        if (!u && !c) { pintar(null); return; }
+
+        fetch('/registros/api/identificar?upc=' + encodeURIComponent(u) +
+              '&codigo=' + encodeURIComponent(c), {credentials: 'same-origin'})
+            .then(function(r) {
+                if (!r.ok) throw new Error(r.status);
+                return r.json();
+            })
+            .then(function(d) {
+                if (d.conflicto) { pintar('error', d.mensaje); return; }
+                if (d.existe) {
+                    upc.value = d.upc || '';
+                    codigo.value = d.codigo || '';
+                    nombre.value = d.nombre || '';
+                    sincronizar();
+                    pintar('ok', 'Producto encontrado en Registros Nuevos.');
+                } else {
+                    pintar('warn', 'No existe en Registros Nuevos. Escribe el Nombre para crearlo.');
+                }
+            })
+            .catch(function() { pintar('error', 'No se pudo verificar contra la matriz.'); });
+    }
+
+    upc.addEventListener('input', function() { sincronizar(); pintar(null); });
+    codigo.addEventListener('input', function() { sincronizar(); pintar(null); });
+    upc.addEventListener('blur', function() { clearTimeout(timer); consultar(); });
+    codigo.addEventListener('blur', function() { clearTimeout(timer); consultar(); });
+    upc.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { clearTimeout(timer); setTimeout(consultar, 0); }
+    });
+    codigo.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { clearTimeout(timer); setTimeout(consultar, 0); }
+    });
+
+    sincronizar();
+
+    // --- Acciones de compra ---
+    document.querySelectorAll('.btn-editar').forEach(function(b) {
+        b.addEventListener('click', function() {
+            if (typeof abrirModalCompra !== 'function') return;
+            abrirModalCompra({
+                id_entrada: this.dataset.entrada,
+                fecha: this.dataset.fecha,
+                cantidad: this.dataset.cantidad,
+                costo: this.dataset.costo,
+                id_producto: this.dataset.id,
+                upc: this.dataset.upc,
+                codigo: this.dataset.codigo,
+                nombre: this.dataset.nombre
+            });
+        });
+    });
+
+    document.querySelectorAll('.btn-del-entrada').forEach(function(b) {
+        b.addEventListener('click', function(ev) {
+            var stock = parseInt(this.dataset.stock, 10) || 0;
+            var cant = parseInt(this.dataset.cantidad, 10) || 0;
+            var nombre = this.dataset.nombre;
+
+            if (stock < cant) {
+                alert('No se puede eliminar: "' + nombre + '" solo tiene ' + stock +
+                      ' unidades en stock y esta compra fue por ' + cant + '.');
+                ev.preventDefault();
+                return;
+            }
+
+            if (!confirm('Eliminar esta compra de ' + cant + ' unidades de "' + nombre +
+                         '"? El stock en Inventario bajara de ' + stock + ' a ' +
+                         (stock - cant) + '.')) {
+                ev.preventDefault();
+            }
+        });
+    });
+})();
+</script>
+{% set buscador = {
+    'id': 'buscarCompras',
+    'tabla': 'tablaCompras',
+    'count': 'countCompras',
+    'cols': 8 if current_user.rol == 'admin' else 7,
+    'total': entradas|length,
+    'etiqueta': 'compras'
+} %}
+{% include '_buscar_tabla.html' %}
+{% endblock %}

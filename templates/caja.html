@@ -1,0 +1,693 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}Caja — The Tech House{% endblock %}
+{% block topbar_title %}Punto de Venta{% endblock %}
+
+{% block extra_css %}
+<style>
+    .pos-checkout-bar {
+        position: fixed;
+        bottom: 0;
+        left: var(--sidebar-width);
+        right: 0;
+        background: var(--surface);
+        border-top: 2px solid var(--border);
+        box-shadow: 0 -4px 20px rgba(0,0,0,.08);
+        padding: 1rem 1.5rem;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+    @media (max-width: 991px) {
+        .pos-checkout-bar { left: 0; }
+    }
+    .pos-checkout-info {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+    .pos-checkout-items {
+        font-size: .85rem;
+        color: var(--text-muted);
+    }
+    .pos-checkout-items strong {
+        color: var(--text);
+        font-size: 1.1rem;
+    }
+    .pos-checkout-total {
+        font-size: .75rem;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: var(--text-muted);
+    }
+    .pos-checkout-total strong {
+        display: block;
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: var(--success);
+    }
+    .pos-cobrar-btn {
+        background: linear-gradient(135deg, var(--success) 0%, #2d9a6a 100%);
+        color: #fff;
+        border: none;
+        border-radius: var(--radius-lg);
+        padding: .9rem 2rem;
+        font-size: 1.05rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        box-shadow: 0 4px 15px rgba(62,183,128,.3);
+        transition: all .2s;
+        white-space: nowrap;
+    }
+    .pos-cobrar-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(62,183,128,.4);
+    }
+    .pos-cobrar-btn:active { transform: translateY(0); }
+    .pos-cobrar-btn:disabled {
+        opacity: .5;
+        cursor: not-allowed;
+        transform: none;
+    }
+    .pos-cobrar-btn i { font-size: 1.3rem; }
+
+    /* Modal cobro */
+    .pos-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.5);
+        z-index: 200;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn .2s;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .pos-modal {
+        background: var(--surface);
+        border-radius: var(--radius-lg);
+        width: 100%;
+        max-width: 420px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.2);
+        animation: slideUp .3s ease-out;
+    }
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .pos-modal-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .pos-modal-header h5 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+    .pos-modal-close {
+        background: none;
+        border: none;
+        font-size: 1.3rem;
+        cursor: pointer;
+        color: var(--text-muted);
+        padding: .25rem;
+    }
+    .pos-modal-body { padding: 1.5rem; }
+    .pos-modal-total {
+        text-align: center;
+        padding: 1rem;
+        background: var(--body-bg);
+        border-radius: var(--radius-md);
+        margin-bottom: 1.25rem;
+    }
+    .pos-modal-total .label {
+        font-size: .75rem;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        letter-spacing: .05em;
+    }
+    .pos-modal-total .amount {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--success);
+    }
+    .pos-input-group {
+        position: relative;
+        margin-bottom: 1rem;
+    }
+    .pos-input-group label {
+        font-size: .8rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: .35rem;
+        display: block;
+    }
+    .pos-input-group .input-wrapper {
+        position: relative;
+    }
+    .pos-input-group .input-prefix {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--text-muted);
+    }
+    .pos-input-group input {
+        width: 100%;
+        padding: .9rem 1rem .9rem 2.2rem;
+        border: 2px solid var(--border);
+        border-radius: var(--radius-md);
+        font-size: 1.3rem;
+        font-weight: 700;
+        outline: none;
+        transition: border-color .2s;
+    }
+    .pos-input-group input:focus {
+        border-color: var(--primary);
+    }
+    .pos-change-display {
+        text-align: center;
+        padding: .75rem;
+        border-radius: var(--radius-md);
+        margin-bottom: 1.25rem;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+    .pos-change-positive {
+        background: rgba(62,183,128,.1);
+        color: var(--success);
+    }
+    .pos-change-negative {
+        background: rgba(255,0,0,.08);
+        color: var(--danger);
+    }
+    .pos-confirm-btn {
+        width: 100%;
+        padding: .9rem;
+        background: linear-gradient(135deg, var(--success) 0%, #2d9a6a 100%);
+        color: #fff;
+        border: none;
+        border-radius: var(--radius-md);
+        font-size: 1.05rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: .5rem;
+        transition: all .2s;
+    }
+    .pos-confirm-btn:hover { box-shadow: 0 4px 15px rgba(62,183,128,.3); }
+    .pos-confirm-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Success overlay */
+    .pos-success-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(255,255,255,.95);
+        z-index: 300;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn .3s;
+    }
+    .pos-success-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: var(--success);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        animation: popIn .4s ease-out;
+    }
+    @keyframes popIn {
+        0% { transform: scale(0); }
+        70% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+    .pos-success-icon i { font-size: 2.5rem; color: #fff; }
+    .pos-success-text {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: .5rem;
+    }
+    .pos-success-amount {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--success);
+        margin-bottom: .25rem;
+    }
+    .pos-success-change {
+        font-size: 1rem;
+        color: var(--text-muted);
+    }
+
+    .content { padding-bottom: 100px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Busqueda -->
+<div class="card-dp mb-4">
+    <div class="card-body-dp">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label">Buscar producto</label>
+                <div class="pos-search-wrapper">
+                    <i class="ti ti-search pos-search-icon"></i>
+                    <input type="text" class="form-control form-control-lg pos-search-input" id="inputBuscar"
+                           placeholder="Codigo, nombre o codigo de barras..." autocomplete="off" autofocus>
+                    <div class="pos-search-dropdown" id="dropdownBuscar" style="display:none"></div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Cantidad</label>
+                <input type="number" class="form-control form-control-lg" id="inputCantidad" value="1" min="1">
+            </div>
+            <div class="col-md-2 d-grid">
+                <button class="btn-dp btn-dp-primary btn-dp-lg" onclick="agregarSeleccion()">
+                    <i class="ti ti-plus"></i> Agregar
+                </button>
+            </div>
+            <div class="col-md-3 text-end">
+                <div class="pos-total-label">Total</div>
+                <div class="pos-total-display" id="totalVenta">Q0.00</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Carrito -->
+<div class="card-dp mb-4">
+    <div class="card-header-dp">
+        <h6><i class="ti ti-shopping-cart"></i> Carrito de Compra</h6>
+        <button class="btn-dp btn-dp-sm btn-dp-outline" onclick="limpiarCarrito()"><i class="ti ti-x"></i> Vaciar</button>
+    </div>
+    <div class="card-body-dp p-0">
+        <div class="table-responsive">
+            <table class="table-dp mb-0">
+                <thead>
+                    <tr>
+                        <th>UPC</th>
+                        <th>Codigo</th>
+                        <th>Producto</th>
+                        <th class="text-center">Cantidad</th>
+                        <th class="text-right">Precio Unit.</th>
+                        <th class="text-right">Total</th>
+                        <th class="text-center">Accion</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyCarrito">
+                    <tr id="filaVacia">
+                        <td colspan="7" class="text-center text-muted-dp py-4">Agrega productos para comenzar la venta.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Checkout Bar -->
+<div class="pos-checkout-bar" id="checkoutBar">
+    <div class="pos-checkout-info">
+        <div class="pos-checkout-items">
+            Items: <strong id="checkoutItems">0</strong>
+        </div>
+        <div class="pos-checkout-total">
+            Total
+            <strong id="checkoutTotal">Q0.00</strong>
+        </div>
+    </div>
+    <button class="pos-cobrar-btn" id="btnCobrar" onclick="abrirModalCobro()" disabled>
+        <i class="ti ti-cash"></i>
+        <span id="btnCobrarText">COBRAR Q0.00</span>
+    </button>
+</div>
+
+<!-- Modal Cobro -->
+<div class="pos-modal-backdrop" id="modalCobro" style="display:none" onclick="cerrarModalCobro(event)">
+    <div class="pos-modal" onclick="event.stopPropagation()">
+        <div class="pos-modal-header">
+            <h5><i class="ti ti-cash"></i> Cobrar Venta</h5>
+            <button class="pos-modal-close" onclick="cerrarModal()"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="pos-modal-body">
+            <div class="pos-modal-total">
+                <div class="label">Total a cobrar</div>
+                <div class="amount" id="modalTotal">Q0.00</div>
+            </div>
+            <div class="pos-input-group">
+                <label>Efectivo recibido</label>
+                <div class="input-wrapper">
+                    <span class="input-prefix">Q</span>
+                    <input type="number" id="inputEfectivo" placeholder="0.00" step="0.01" min="0" oninput="calcularCambio()" autofocus>
+                </div>
+            </div>
+            <div class="pos-change-display" id="cambioDisplay" style="display:none"></div>
+            <button class="pos-confirm-btn" id="btnConfirmar" onclick="confirmarVenta()" disabled>
+                <i class="ti ti-check"></i> Confirmar Venta
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Success Overlay -->
+<div class="pos-success-overlay" id="successOverlay" style="display:none">
+    <div class="pos-success-icon"><i class="ti ti-check"></i></div>
+    <div class="pos-success-text">Venta Registrada</div>
+    <div class="pos-success-amount" id="successTotal">Q0.00</div>
+    <div class="pos-success-change" id="successChange"></div>
+</div>
+
+{% include '_modal_producto.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let carrito = [];
+    let totalActual = 0;
+    let seleccionActual = null;
+    let debounceTimer = null;
+    const ES_ADMIN = {{ 'true' if current_user.rol == 'admin' else 'false' }};
+
+    const inputBuscar = document.getElementById('inputBuscar');
+    const dropdown = document.getElementById('dropdownBuscar');
+
+    inputBuscar.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const q = this.value.trim();
+        if (q.length < 2) { ocultarDropdown(); return; }
+        debounceTimer = setTimeout(() => buscarProductos(q), 250);
+    });
+
+    inputBuscar.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') { ocultarDropdown(); return; }
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (seleccionActual) {
+                agregarAlCarrito(seleccionActual);
+            } else if (dropdown.children.length === 1) {
+                const item = dropdown.querySelector('.pos-search-item');
+                if (item) agregarAlCarrito(JSON.parse(item.dataset.producto));
+            }
+        }
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            const items = dropdown.querySelectorAll('.pos-search-item');
+            if (items.length === 0) return;
+            let idx = -1;
+            items.forEach((el, i) => { if (el.classList.contains('active')) idx = i; });
+            if (e.key === 'ArrowDown') idx = Math.min(idx + 1, items.length - 1);
+            else idx = Math.max(idx - 1, 0);
+            items.forEach(el => el.classList.remove('active'));
+            items[idx].classList.add('active');
+            seleccionActual = JSON.parse(items[idx].dataset.producto);
+        }
+    });
+
+    inputBuscar.addEventListener('focus', function() {
+        if (dropdown.children.length > 0) dropdown.style.display = 'block';
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.pos-search-wrapper')) ocultarDropdown();
+    });
+
+    async function buscarProductos(q) {
+        try {
+            const r = await fetch('/caja/buscar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({q: q})
+            });
+            const resultados = await r.json();
+            mostrarDropdown(resultados);
+        } catch(e) { ocultarDropdown(); }
+    }
+
+    function mostrarDropdown(resultados) {
+        seleccionActual = null;
+        dropdown.innerHTML = '';
+        if (resultados.length === 0) {
+            dropdown.innerHTML = '<div class="pos-search-empty">Sin resultados</div>';
+            dropdown.style.display = 'block';
+            return;
+        }
+        resultados.forEach(p => {
+            const item = document.createElement('div');
+            item.className = 'pos-search-item';
+            item.dataset.producto = JSON.stringify(p);
+            const stockClass = p.stock <= 5 ? 'stock-low' : '';
+            item.innerHTML =
+                '<div class="pos-search-item-info">' +
+                    '<div class="pos-search-item-name">' + p.nombre + '</div>' +
+                    '<div class="pos-search-item-code">' + p.codigo +
+                        (p.codigo_barras ? ' &middot; UPC ' + p.codigo_barras : '') +
+                    '</div>' +
+                '</div>' +
+                '<div class="pos-search-item-right">' +
+                    '<div class="pos-search-item-price">Q' + p.precio.toFixed(2) + '</div>' +
+                    '<div class="pos-search-item-stock ' + stockClass + '">Stock: ' + p.stock + '</div>' +
+                '</div>';
+            item.addEventListener('click', () => agregarAlCarrito(p));
+            item.addEventListener('mouseenter', function() {
+                dropdown.querySelectorAll('.pos-search-item').forEach(el => el.classList.remove('active'));
+                this.classList.add('active');
+                seleccionActual = p;
+            });
+            dropdown.appendChild(item);
+        });
+        dropdown.style.display = 'block';
+    }
+
+    function ocultarDropdown() {
+        dropdown.style.display = 'none';
+        dropdown.innerHTML = '';
+        seleccionActual = null;
+    }
+
+    function agregarSeleccion() {
+        if (seleccionActual) {
+            agregarAlCarrito(seleccionActual);
+        } else {
+            const q = inputBuscar.value.trim();
+            if (q) buscarYAgregar(q);
+        }
+    }
+
+    async function buscarYAgregar(q) {
+        try {
+            const r = await fetch('/caja/buscar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({q: q})
+            });
+            const resultados = await r.json();
+            if (resultados.length === 1) {
+                agregarAlCarrito(resultados[0]);
+            } else if (resultados.length > 1) {
+                mostrarDropdown(resultados);
+            } else {
+                alert('Producto no encontrado');
+            }
+        } catch(e) { alert('Error al buscar'); }
+    }
+
+    function agregarAlCarrito(producto) {
+        const cantidad = parseInt(document.getElementById('inputCantidad').value) || 1;
+        if (producto.stock < cantidad) {
+            alert('Stock insuficiente. Solo hay ' + producto.stock + ' unidades.');
+            return;
+        }
+        const index = carrito.findIndex(item => item.codigo === producto.codigo);
+        if (index > -1) {
+            carrito[index].cantidad += cantidad;
+            carrito[index].total = carrito[index].cantidad * carrito[index].precio;
+        } else {
+            carrito.push({
+                id: producto.id,
+                upc: producto.codigo_barras || '',
+                codigo: producto.codigo,
+                nombre: producto.nombre,
+                cantidad: cantidad,
+                precio: producto.precio,
+                total: cantidad * producto.precio
+            });
+        }
+        renderCarrito();
+        inputBuscar.value = '';
+        document.getElementById('inputCantidad').value = 1;
+        ocultarDropdown();
+        inputBuscar.focus();
+    }
+
+    function renderCarrito() {
+        const tbody = document.getElementById('tbodyCarrito');
+        tbody.innerHTML = '';
+        totalActual = 0;
+        let totalItems = 0;
+        if (carrito.length === 0) {
+            tbody.innerHTML = '<tr id="filaVacia"><td colspan="7" class="text-center text-muted-dp py-4">Agrega productos para comenzar la venta.</td></tr>';
+        } else {
+            carrito.forEach((item, index) => {
+                totalActual += item.total;
+                totalItems += item.cantidad;
+                const upcCelda = item.upc
+                    ? '<span class="badge-dp badge-dp-gray">' + item.upc + '</span>'
+                    : '<span class="text-muted-dp">—</span>';
+                let acciones = '<button class="btn-icon-dp" title="Quitar de la venta" ' +
+                               'onclick="quitarItem(' + index + ')"><i class="ti ti-x"></i></button>';
+                if (ES_ADMIN && typeof abrirModalProducto === 'function') {
+                    acciones +=
+                        '<button class="btn-icon-dp" title="Editar producto" ' +
+                        'onclick="editarDesdeCarrito(' + index + ')"><i class="ti ti-pencil"></i></button>' +
+                        '<button class="btn-icon-dp danger" title="Eliminar producto" ' +
+                        'onclick="eliminarDesdeCarrito(' + index + ')"><i class="ti ti-trash"></i></button>';
+                }
+                tbody.innerHTML += '<tr>' +
+                    '<td>' + upcCelda + '</td>' +
+                    '<td><span class="badge-dp badge-dp-primary">' + item.codigo + '</span></td>' +
+                    '<td class="fw-600">' + item.nombre + '</td>' +
+                    '<td class="text-center">' + item.cantidad + '</td>' +
+                    '<td class="text-right">Q' + item.precio.toFixed(2) + '</td>' +
+                    '<td class="text-right fw-700">Q' + item.total.toFixed(2) + '</td>' +
+                    '<td class="text-center">' + acciones + '</td>' +
+                    '</tr>';
+            });
+        }
+        document.getElementById('totalVenta').innerText = 'Q' + totalActual.toFixed(2);
+        document.getElementById('checkoutItems').innerText = totalItems;
+        document.getElementById('checkoutTotal').innerText = 'Q' + totalActual.toFixed(2);
+        document.getElementById('btnCobrarText').innerText = 'COBRAR Q' + totalActual.toFixed(2);
+        document.getElementById('btnCobrar').disabled = carrito.length === 0;
+    }
+
+    function quitarItem(index) { carrito.splice(index, 1); renderCarrito(); }
+    function limpiarCarrito() { carrito = []; renderCarrito(); }
+
+    function editarDesdeCarrito(index) {
+        const item = carrito[index];
+        if (!item || typeof abrirModalProducto !== 'function') return;
+        abrirModalProducto({ id: item.id, upc: item.upc, codigo: item.codigo, nombre: item.nombre });
+    }
+
+    function eliminarDesdeCarrito(index) {
+        const item = carrito[index];
+        if (!item || typeof eliminarProducto !== 'function') return;
+        eliminarProducto(item.id, item.codigo);
+    }
+
+    function abrirModalCobro() {
+        if (carrito.length === 0) return;
+        document.getElementById('modalTotal').innerText = 'Q' + totalActual.toFixed(2);
+        document.getElementById('inputEfectivo').value = '';
+        document.getElementById('cambioDisplay').style.display = 'none';
+        document.getElementById('btnConfirmar').disabled = true;
+        document.getElementById('modalCobro').style.display = 'flex';
+        setTimeout(() => document.getElementById('inputEfectivo').focus(), 100);
+    }
+
+    function cerrarModalCobro(e) {
+        if (e.target === e.currentTarget) cerrarModal();
+    }
+
+    function cerrarModal() {
+        document.getElementById('modalCobro').style.display = 'none';
+    }
+
+    function calcularCambio() {
+        const efectivo = parseFloat(document.getElementById('inputEfectivo').value) || 0;
+        const cambio = efectivo - totalActual;
+        const display = document.getElementById('cambioDisplay');
+        const btn = document.getElementById('btnConfirmar');
+
+        if (efectivo <= 0) {
+            display.style.display = 'none';
+            btn.disabled = true;
+            return;
+        }
+
+        display.style.display = 'block';
+        if (cambio >= 0) {
+            display.className = 'pos-change-display pos-change-positive';
+            display.innerHTML = 'Cambio: <strong>Q' + cambio.toFixed(2) + '</strong>';
+            btn.disabled = false;
+        } else {
+            display.className = 'pos-change-display pos-change-negative';
+            display.innerHTML = 'Falta: <strong>Q' + Math.abs(cambio).toFixed(2) + '</strong>';
+            btn.disabled = true;
+        }
+    }
+
+    async function confirmarVenta() {
+        const btn = document.getElementById('btnConfirmar');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-dp"></span> Procesando...';
+
+        const response = await fetch('/caja/registrar', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({carrito: carrito})
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            cerrarModal();
+            const efectivo = parseFloat(document.getElementById('inputEfectivo').value) || 0;
+            const cambio = efectivo - totalActual;
+            document.getElementById('successTotal').innerText = 'Q' + totalActual.toFixed(2);
+            document.getElementById('successChange').innerText = cambio > 0 ? 'Cambio: Q' + cambio.toFixed(2) : '';
+            document.getElementById('successOverlay').style.display = 'flex';
+            setTimeout(() => {
+                document.getElementById('successOverlay').style.display = 'none';
+                limpiarCarrito();
+            }, 2000);
+        } else {
+            alert('Error: ' + data.message);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ti ti-check"></i> Confirmar Venta';
+        }
+    }
+
+    // Poll scanner
+    async function pollScanner() {
+        try {
+            const r = await fetch('/caja/api/poll-carrito');
+            const items = await r.json();
+            if (items.length === 0) return;
+            items.forEach(item => {
+                const index = carrito.findIndex(c => c.codigo === item.codigo);
+                if (index > -1) {
+                    carrito[index].cantidad += item.cantidad;
+                    carrito[index].total = carrito[index].cantidad * carrito[index].precio;
+                } else {
+                    carrito.push({
+                        codigo: item.codigo,
+                        nombre: item.nombre,
+                        cantidad: item.cantidad,
+                        precio: item.precio,
+                        total: item.total
+                    });
+                }
+            });
+            renderCarrito();
+        } catch(e) {}
+    }
+
+    setInterval(pollScanner, 2000);
+</script>
+{% endblock %}

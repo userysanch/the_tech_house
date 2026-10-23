@@ -1,0 +1,97 @@
+{% if current_user.rol == 'admin' %}
+<!-- Modal compartido para editar/eliminar un producto (matriz: Registros Nuevos) -->
+<div class="dp-modal-backdrop" id="modalProductoBack" style="display:none"
+     onclick="cerrarModalProducto(event)">
+    <div class="dp-modal" onclick="event.stopPropagation()">
+        <div class="dp-modal-header">
+            <h5><i class="ti ti-pencil"></i> Editar producto</h5>
+            <button type="button" class="dp-modal-close" onclick="cerrarModalProducto()">
+                <i class="ti ti-x"></i>
+            </button>
+        </div>
+        <div class="dp-modal-body">
+            <form method="POST" action="{{ url_for('registros.registros_view') }}" id="formModalProducto">
+                <input type="hidden" name="action" value="editar">
+                <input type="hidden" name="id_producto" id="mpId">
+                <div class="mb-3">
+                    <label class="form-label">UPC</label>
+                    <input type="text" class="form-control" name="upc" id="mpUpc"
+                           maxlength="50" autocomplete="off" placeholder="Codigo de barras">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Codigo *</label>
+                    <input type="text" class="form-control" name="codigo" id="mpCodigo"
+                           maxlength="50" autocomplete="off" required>
+                </div>
+                <div class="mb-0">
+                    <label class="form-label">Descripcion *</label>
+                    <input type="text" class="form-control" name="descripcion" id="mpDesc"
+                           maxlength="150" autocomplete="off" required>
+                </div>
+            </form>
+        </div>
+        <div class="dp-modal-footer">
+            <form method="POST" action="{{ url_for('registros.registros_view') }}" id="formModalEliminar">
+                <input type="hidden" name="action" value="eliminar">
+                <input type="hidden" name="id_producto" id="mpIdDel">
+                <button type="button" class="btn-dp btn-dp-danger" id="btnMpEliminar">
+                    <i class="ti ti-trash"></i> Eliminar
+                </button>
+            </form>
+            <div class="dp-modal-footer-right">
+                <button type="button" class="btn-dp btn-dp-outline" onclick="cerrarModalProducto()">
+                    Cancelar
+                </button>
+                <button type="button" class="btn-dp btn-dp-primary" id="btnMpGuardar">
+                    <i class="ti ti-check"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var backdrop = document.getElementById('modalProductoBack');
+    if (!backdrop) return;
+
+    window.abrirModalProducto = function(datos) {
+        document.getElementById('mpId').value = datos.id || '';
+        document.getElementById('mpUpc').value = datos.upc || '';
+        document.getElementById('mpCodigo').value = datos.codigo || '';
+        document.getElementById('mpDesc').value = datos.nombre || '';
+        backdrop.style.display = 'flex';
+        setTimeout(function() { document.getElementById('mpCodigo').focus(); }, 60);
+    };
+
+    window.cerrarModalProducto = function(ev) {
+        if (ev && ev.target !== ev.currentTarget) return;
+        backdrop.style.display = 'none';
+    };
+
+    window.eliminarProducto = function(id, codigo) {
+        if (!confirm('Eliminar el producto "' + codigo + '"? Esta accion no se puede deshacer.')) {
+            return;
+        }
+        document.getElementById('mpIdDel').value = id;
+        document.getElementById('formModalEliminar').submit();
+    };
+
+    document.getElementById('btnMpGuardar').addEventListener('click', function() {
+        var f = document.getElementById('formModalProducto');
+        if (f.reportValidity()) f.submit();
+    });
+
+    document.getElementById('btnMpEliminar').addEventListener('click', function() {
+        eliminarProducto(document.getElementById('mpId').value,
+                         document.getElementById('mpCodigo').value);
+    });
+
+    document.addEventListener('keydown', function(ev) {
+        if (ev.key === 'Escape' && backdrop.style.display === 'flex') {
+            cerrarModalProducto();
+        }
+    });
+})();
+</script>
+{% endif %}

@@ -1,0 +1,6 @@
+Flask
+Flask-SQLAlchemy
+Flask-Login
+PyMySQL
+openpyxl
+sqlalchemy>=2.0,<2.1

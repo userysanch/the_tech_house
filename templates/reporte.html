@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+
+{% block title %}Reportes — The Tech House{% endblock %}
+{% block topbar_title %}Reporte de Ganancias{% endblock %}
+
+{% block content %}
+<!-- Filtros de fecha -->
+<div class="card-dp mb-4">
+    <div class="card-header-dp">
+        <h6><i class="ti ti-filter"></i> Filtrar por fecha</h6>
+    </div>
+    <div class="card-body-dp">
+        <form method="GET" class="form-dp">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label" for="filtroAnio">Año</label>
+                    <select class="form-select" name="anio" id="filtroAnio">
+                        <option value="">Todos</option>
+                        {% for a in anios %}
+                        <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" for="filtroMes">Mes</label>
+                    <select class="form-select" name="mes" id="filtroMes"
+                            {% if not anio %}disabled{% endif %}>
+                        <option value="">Todos</option>
+                        {% for m in meses %}
+                        <option value="{{ loop.index }}" {% if loop.index == mes %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" for="filtroInicio">Fecha inicio</label>
+                    <input type="date" class="form-control" name="fecha_inicio"
+                           id="filtroInicio" value="{{ fecha_inicio }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" for="filtroFin">Fecha fin</label>
+                    <input type="date" class="form-control" name="fecha_fin"
+                           id="filtroFin" value="{{ fecha_fin }}">
+                </div>
+                <div class="col-md-2 d-grid">
+                    <button type="submit" class="btn-dp btn-dp-primary">
+                        <i class="ti ti-filter"></i> Filtrar
+                    </button>
+                </div>
+                <div class="col-md-2 d-grid">
+                    <a href="{{ url_for('reporte.reporte_view') }}" class="btn-dp btn-dp-outline">
+                        <i class="ti ti-x"></i> Limpiar
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Totales -->
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="stat-card-dp">
+            <div class="stat-icon-dp success"><i class="ti ti-cash"></i></div>
+            <div class="stat-info-dp">
+                <h3>Q{{ "%.2f"|format(total_ventas) }}</h3>
+                <p>Total Ventas{% if etiqueta %} <span class="text-muted-dp">· {{ etiqueta }}</span>{% endif %}</p>
+            </div>
+        </div>
+    </div>
+    {% if current_user.rol == 'admin' %}
+    <div class="col-md-6">
+        <div class="stat-card-dp">
+            <div class="stat-icon-dp teal"><i class="ti ti-chart-line"></i></div>
+            <div class="stat-info-dp">
+                <h3>Q{{ "%.2f"|format(total_ganancia) }}</h3>
+                <p>Ganancia Neta{% if etiqueta %} <span class="text-muted-dp">· {{ etiqueta }}</span>{% endif %}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Tabla -->
+<div class="card-dp">
+    <div class="card-header-dp">
+        <h6><i class="ti ti-table"></i> Detalle</h6>
+        <div class="d-flex align-items-center gap-2">
+            <div class="form-dp">
+                <div class="search-input-wrap" style="width:300px;">
+                    <i class="ti ti-search search-icon"></i>
+                    <input type="text" class="form-control search-input" id="buscarGanancias"
+                           placeholder="Buscar fecha, UPC, codigo o producto..." autocomplete="off">
+                </div>
+            </div>
+            <span class="badge-dp badge-dp-gray" id="countGanancias">{{ reporte|length }} registros</span>
+            <a href="{{ url_for('exportar.exportar_excel', hoja='ganancias',
+                                anio=anio or '', mes=mes or '',
+                                fecha_inicio=fecha_inicio, fecha_fin=fecha_fin) }}"
+               class="btn-dp btn-dp-success btn-dp-sm">
+                <i class="ti ti-file-spreadsheet"></i> Exportar Excel
+            </a>
+        </div>
+    </div>
+    <div class="card-body-dp p-0">
+        <div class="table-responsive">
+            <table class="table-dp mb-0">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>UPC</th>
+                        <th>Codigo</th>
+                        <th>Producto</th>
+                        <th class="text-center">Cantidad</th>
+                        <th class="text-right">Total Venta</th>
+                        {% if current_user.rol == 'admin' %}
+                        <th class="text-right">Ganancia</th>
+                        <th class="text-center">Acciones</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody id="tablaGanancias">
+                    {% for r in reporte %}
+                    <tr data-buscar="{{ (r.fecha.strftime('%d/%m/%Y %H:%M') ~ ' ' ~
+                                         (r.upc or '') ~ ' ' ~ r.codigo ~ ' ' ~
+                                         r.producto)|lower }}">
+                        <td>{{ r.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>
+                            {% if r.upc %}
+                                <span class="badge-dp badge-dp-gray">{{ r.upc }}</span>
+                            {% else %}
+                                <span class="text-muted-dp">—</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge-dp badge-dp-primary">{{ r.codigo }}</span></td>
+                        <td class="fw-600">{{ r.producto }}</td>
+                        <td class="text-center">{{ r.cantidad }}</td>
+                        <td class="text-right">Q{{ "%.2f"|format(r.total) }}</td>
+                        {% if current_user.rol == 'admin' %}
+                        <td class="text-right fw-700 text-success-dp">Q{{ "%.2f"|format(r.ganancia) }}</td>
+                        <td class="text-center">
+                            <button type="button" class="btn-icon-dp btn-editar"
+                                    data-id="{{ r.id }}" data-upc="{{ r.upc }}"
+                                    data-codigo="{{ r.codigo }}" data-nombre="{{ r.producto }}"
+                                    title="Editar producto">
+                                <i class="ti ti-pencil"></i>
+                            </button>
+                            <form method="POST" class="d-inline"
+                                  action="{{ url_for('ventas.ventas_view') }}"
+                                  onsubmit="return confirm('Anular esta venta? Se devolveran {{ r.cantidad }} unidad(es) al inventario. Esta accion no se puede deshacer.');">
+                                <input type="hidden" name="action" value="anular_venta">
+                                <input type="hidden" name="id_detalle" value="{{ r.id_detalle }}">
+                                <input type="hidden" name="next" value="{{ request.path }}">
+                                <button type="submit" class="btn-icon-dp danger"
+                                        title="Anular venta (devuelve las unidades al inventario)">
+                                    <i class="ti ti-arrow-back-up"></i>
+                                </button>
+                            </form>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="{{ 8 if current_user.rol == 'admin' else 6 }}" class="text-center text-muted-dp py-4">No hay datos para el rango seleccionado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% include '_modal_producto.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // --- Filtro por anio / mes ---
+    (function() {
+        var selAnio = document.getElementById('filtroAnio');
+        var selMes = document.getElementById('filtroMes');
+        var inpIni = document.getElementById('filtroInicio');
+        var inpFin = document.getElementById('filtroFin');
+        if (!selAnio || !selMes) return;
+        var form = selAnio.closest('form');
+
+        function sincronizarMes() {
+            if (selAnio.value) {
+                selMes.removeAttribute('disabled');
+            } else {
+                selMes.setAttribute('disabled', 'disabled');
+                selMes.value = '';
+            }
+        }
+
+        function limpiarFechas() {
+            if (inpIni) inpIni.value = '';
+            if (inpFin) inpFin.value = '';
+        }
+
+        function limpiarPeriodo() {
+            selAnio.value = '';
+            sincronizarMes();
+        }
+
+        selAnio.addEventListener('change', function() {
+            limpiarFechas();
+            sincronizarMes();
+            form.submit();
+        });
+
+        selMes.addEventListener('change', function() {
+            limpiarFechas();
+            form.submit();
+        });
+
+        [inpIni, inpFin].forEach(function(el) {
+            if (!el) return;
+            el.addEventListener('change', limpiarPeriodo);
+        });
+
+        sincronizarMes();
+    })();
+
+    document.querySelectorAll('.btn-editar').forEach(function(b) {
+        b.addEventListener('click', function() {
+            if (typeof abrirModalProducto !== 'function') return;
+            abrirModalProducto({
+                id: this.dataset.id, upc: this.dataset.upc || '',
+                codigo: this.dataset.codigo, nombre: this.dataset.nombre
+            });
+        });
+    });
+</script>
+{% set buscador = {
+    'id': 'buscarGanancias',
+    'tabla': 'tablaGanancias',
+    'count': 'countGanancias',
+    'cols': 8 if current_user.rol == 'admin' else 6,
+    'total': reporte|length,
+    'etiqueta': 'registros'
+} %}
+{% include '_buscar_tabla.html' %}
+{% endblock %}

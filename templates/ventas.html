@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}Ventas — The Tech House{% endblock %}
+{% block topbar_title %}Historial de Ventas{% endblock %}
+
+{% block content %}
+<div class="card-dp">
+    <div class="card-header-dp">
+        <h6><i class="ti ti-receipt"></i> Detalle de Ventas</h6>
+        <div class="d-flex align-items-center gap-2">
+            <div class="form-dp">
+                <div class="search-input-wrap" style="width:300px;">
+                    <i class="ti ti-search search-icon"></i>
+                    <input type="text" class="form-control search-input" id="buscarVentas"
+                           placeholder="Buscar fecha, UPC, codigo o producto..." autocomplete="off">
+                </div>
+            </div>
+            <span class="badge-dp badge-dp-gray" id="countVentas">{{ detalles|length }} ventas</span>
+            <a href="{{ url_for('exportar.exportar_excel', hoja='ventas') }}"
+               class="btn-dp btn-dp-success btn-dp-sm">
+                <i class="ti ti-file-spreadsheet"></i> Exportar Excel
+            </a>
+        </div>
+    </div>
+    <div class="card-body-dp p-0">
+        <div class="table-responsive">
+            <table class="table-dp mb-0">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>UPC</th>
+                        <th>Codigo</th>
+                        <th>Producto</th>
+                        <th class="text-center">Cantidad</th>
+                        <th class="text-right">Total</th>
+                        {% if current_user.rol == 'admin' %}
+                        <th class="text-center">Acciones</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody id="tablaVentas">
+                    {% for d in detalles %}
+                    <tr data-buscar="{{ (d.venta.fecha.strftime('%d/%m/%Y %H:%M') ~ ' ' ~
+                                         (d.producto.codigo_barras or '') ~ ' ' ~
+                                         d.codigo_producto ~ ' ' ~ d.producto.nombre)|lower }}">
+                        <td>{{ d.venta.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>
+                            {% if d.producto.codigo_barras %}
+                                <span class="badge-dp badge-dp-gray">{{ d.producto.codigo_barras }}</span>
+                            {% else %}
+                                <span class="text-muted-dp">—</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge-dp badge-dp-primary">{{ d.codigo_producto }}</span></td>
+                        <td class="fw-600">{{ d.producto.nombre }}</td>
+                        <td class="text-center">{{ d.cantidad }}</td>
+                        <td class="text-right fw-700">Q{{ "%.2f"|format(d.total) }}</td>
+                        {% if current_user.rol == 'admin' %}
+                        <td class="text-center">
+                            <button type="button" class="btn-icon-dp btn-editar"
+                                    data-id="{{ d.producto.id }}"
+                                    data-upc="{{ d.producto.codigo_barras or '' }}"
+                                    data-codigo="{{ d.producto.codigo }}"
+                                    data-nombre="{{ d.producto.nombre }}"
+                                    title="Editar producto">
+                                <i class="ti ti-pencil"></i>
+                            </button>
+                            <form method="POST" class="d-inline"
+                                  action="{{ url_for('ventas.ventas_view') }}"
+                                  onsubmit="return confirm('Anular esta venta? Se devolveran {{ d.cantidad }} unidad(es) al inventario. Esta accion no se puede deshacer.');">
+                                <input type="hidden" name="action" value="anular_venta">
+                                <input type="hidden" name="id_detalle" value="{{ d.id }}">
+                                <input type="hidden" name="next" value="{{ request.path }}">
+                                <button type="submit" class="btn-icon-dp danger"
+                                        title="Anular venta (devuelve las unidades al inventario)">
+                                    <i class="ti ti-arrow-back-up"></i>
+                                </button>
+                            </form>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="{{ 7 if current_user.rol == 'admin' else 6 }}"
+                            class="text-center text-muted-dp py-4">No hay ventas registradas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% include '_modal_producto.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll('.btn-editar').forEach(function(b) {
+        b.addEventListener('click', function() {
+            if (typeof abrirModalProducto !== 'function') return;
+            abrirModalProducto({
+                id: this.dataset.id, upc: this.dataset.upc || '',
+                codigo: this.dataset.codigo, nombre: this.dataset.nombre
+            });
+        });
+    });
+</script>
+{% set buscador = {
+    'id': 'buscarVentas',
+    'tabla': 'tablaVentas',
+    'count': 'countVentas',
+    'cols': 7 if current_user.rol == 'admin' else 6,
+    'total': detalles|length,
+    'etiqueta': 'ventas'
+} %}
+{% include '_buscar_tabla.html' %}
+{% endblock %}

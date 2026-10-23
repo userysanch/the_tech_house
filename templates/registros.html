@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+
+{% block title %}Registros Nuevos — The Tech House{% endblock %}
+{% block topbar_title %}Registros Nuevos{% endblock %}
+
+{% block content %}
+{% if current_user.rol == 'admin' %}
+<!-- Agregar / Editar producto -->
+<div class="card-dp mb-4">
+    <div class="card-header-dp">
+        <h6 id="tituloForm"><i class="ti ti-circle-plus"></i> Agregar producto</h6>
+        <button type="button" class="btn-dp btn-dp-outline btn-dp-sm" id="btnCancelarEdicion"
+                style="display:none" onclick="cancelarEdicion()">
+            <i class="ti ti-x"></i> Cancelar edicion
+        </button>
+    </div>
+    <div class="card-body-dp">
+        <form method="POST" class="form-dp" id="formNuevoProducto">
+            <input type="hidden" name="action" id="formAction" value="crear">
+            <input type="hidden" name="id_producto" id="id_producto" value="">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">UPC</label>
+                    <input type="text" class="form-control" name="upc" id="inputUpc"
+                           placeholder="Codigo de barras" maxlength="50" autocomplete="off">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Codigo *</label>
+                    <input type="text" class="form-control" name="codigo" id="inputCodigoNuevo"
+                           placeholder="Ej: PROD-000145" maxlength="50" required autocomplete="off">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Descripcion *</label>
+                    <input type="text" class="form-control" name="descripcion" id="inputDescripcion"
+                           placeholder="Nombre del producto" maxlength="150" required autocomplete="off">
+                </div>
+                <div class="col-md-2 d-grid">
+                    <button type="submit" class="btn-dp btn-dp-success btn-dp-lg" id="btnSubmitForm">
+                        <i class="ti ti-plus"></i> <span id="btnSubmitTexto">Agregar</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Busqueda -->
+<div class="card-dp mb-4">
+    <div class="card-body-dp">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-9">
+                <label class="form-label">Buscar en registros</label>
+                <div class="search-input-wrap">
+                    <i class="ti ti-search search-icon"></i>
+                    <input type="text" class="form-control form-control-lg search-input" id="registrosInput"
+                           placeholder="Busca por UPC, codigo o descripcion... Ej: Xtech, AB004XTK03, canon"
+                           autocomplete="off" autofocus>
+                </div>
+            </div>
+            <div class="col-md-3 d-grid">
+                <button type="button" class="btn-dp btn-dp-outline btn-dp-lg" onclick="limpiarRegistros()">
+                    <i class="ti ti-x"></i> Limpiar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hoja -->
+<div class="card-dp">
+    <div class="card-header-dp">
+        <h6><i class="ti ti-file-type-xls"></i> Hoja de Productos
+            <span class="badge-dp badge-dp-primary" id="registrosCount">{{ productos|length }} productos</span>
+        </h6>
+        <a href="{{ url_for('registros.registros_excel') }}" class="btn-dp btn-dp-success btn-dp-sm">
+            <i class="ti ti-file-spreadsheet"></i> Exportar Excel
+        </a>
+    </div>
+    <div class="card-body-dp p-0">
+        <div class="table-responsive">
+            <table class="table-dp mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-center" style="width:160px;">UPC</th>
+                        <th style="width:140px;">Codigo</th>
+                        <th>Descripcion</th>
+                        <th class="text-center" style="width:120px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="registrosBody">
+                    {% if productos %}
+                        {% for p in productos %}
+                        <tr data-buscar="{{ ((p.codigo_barras or '') ~ ' ' ~ p.codigo ~ ' ' ~ p.nombre)|lower }}">
+                            <td class="text-center">
+                                {% if p.codigo_barras %}
+                                    <span class="badge-dp badge-dp-primary">{{ p.codigo_barras }}</span>
+                                {% else %}
+                                    <span class="text-muted-dp">—</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="badge-dp badge-dp-gray">{{ p.codigo }}</span></td>
+                            <td class="fw-600">{{ p.nombre }}</td>
+                            <td class="text-center">
+                                <button type="button" class="btn-icon-dp btn-editar-registro"
+                                        data-id="{{ p.id }}"
+                                        data-upc="{{ p.codigo_barras or '' }}"
+                                        data-codigo="{{ p.codigo }}"
+                                        data-descripcion="{{ p.nombre }}"
+                                        title="Editar">
+                                    <i class="ti ti-pencil"></i>
+                                </button>
+                                <form method="POST" class="d-inline"
+                                      onsubmit="return confirm('Eliminar el producto {{ p.codigo }}?');">
+                                    <input type="hidden" name="action" value="eliminar">
+                                    <input type="hidden" name="id_producto" value="{{ p.id }}">
+                                    <button type="submit" class="btn-icon-dp danger" title="Eliminar">
+                                        <i class="ti ti-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="4" class="text-center text-muted-dp py-4">No hay productos registrados.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert-dp alert-dp-danger">No tienes acceso a esta seccion.</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const inputRegistros = document.getElementById('registrosInput');
+    const bodyRegistros = document.getElementById('registrosBody');
+    const countRegistros = document.getElementById('registrosCount');
+    const totalRegistros = {{ productos|length }};
+    let debounceRegistros = null;
+
+    inputRegistros.addEventListener('input', function() {
+        const q = this.value.trim().toLowerCase();
+        clearTimeout(debounceRegistros);
+        debounceRegistros = setTimeout(() => filtrarRegistros(q), 200);
+    });
+
+    inputRegistros.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') limpiarRegistros();
+    });
+
+    function filtrarRegistros(q) {
+        const filas = bodyRegistros.querySelectorAll('tr[data-buscar]');
+        let visibles = 0;
+
+        if (q === '') {
+            filas.forEach(f => f.style.display = '');
+            quitarFilaVacia();
+            countRegistros.textContent = totalRegistros + ' productos';
+            return;
+        }
+
+        filas.forEach(f => {
+            const coincide = f.getAttribute('data-buscar').indexOf(q) !== -1;
+            f.style.display = coincide ? '' : 'none';
+            if (coincide) visibles++;
+        });
+
+        countRegistros.textContent = visibles + ' de ' + totalRegistros + ' productos';
+
+        if (visibles === 0) {
+            mostrarFilaVacia('No se encontraron productos para "<strong>' + escaparHtml(q) + '</strong>"');
+        } else {
+            quitarFilaVacia();
+        }
+    }
+
+    function mostrarFilaVacia(html) {
+        quitarFilaVacia();
+        const tr = document.createElement('tr');
+        tr.id = 'registrosFilaVacia';
+        tr.innerHTML = '<td colspan="4" class="text-center text-muted-dp py-4">' +
+            '<i class="ti ti-search-off" style="font-size:2rem;opacity:.3;"></i><br>' + html + '</td>';
+        bodyRegistros.appendChild(tr);
+    }
+
+    function quitarFilaVacia() {
+        const f = document.getElementById('registrosFilaVacia');
+        if (f) f.remove();
+    }
+
+    function limpiarRegistros() {
+        inputRegistros.value = '';
+        filtrarRegistros('');
+        inputRegistros.focus();
+    }
+
+    // ---- Editar ----
+    document.querySelectorAll('.btn-editar-registro').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.getElementById('id_producto').value = this.dataset.id;
+            document.getElementById('formAction').value = 'editar';
+            document.getElementById('inputUpc').value = this.dataset.upc || '';
+            document.getElementById('inputCodigoNuevo').value = this.dataset.codigo || '';
+            document.getElementById('inputDescripcion').value = this.dataset.descripcion || '';
+
+            document.getElementById('tituloForm').innerHTML =
+                '<i class="ti ti-pencil"></i> Editar producto: ' + escaparHtml(this.dataset.codigo || '');
+            document.getElementById('btnSubmitTexto').textContent = 'Guardar';
+            document.getElementById('btnSubmitForm').classList.remove('btn-dp-success');
+            document.getElementById('btnSubmitForm').classList.add('btn-dp-primary');
+            document.getElementById('btnCancelarEdicion').style.display = '';
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(function() {
+                document.getElementById('inputUpc').focus();
+            }, 300);
+        });
+    });
+
+    function cancelarEdicion() {
+        document.getElementById('formNuevoProducto').reset();
+        document.getElementById('id_producto').value = '';
+        document.getElementById('formAction').value = 'crear';
+        document.getElementById('tituloForm').innerHTML =
+            '<i class="ti ti-circle-plus"></i> Agregar producto';
+        document.getElementById('btnSubmitTexto').textContent = 'Agregar';
+        document.getElementById('btnSubmitForm').classList.remove('btn-dp-primary');
+        document.getElementById('btnSubmitForm').classList.add('btn-dp-success');
+        document.getElementById('btnCancelarEdicion').style.display = 'none';
+    }
+
+    function escaparHtml(txt) {
+        const d = document.createElement('div');
+        d.appendChild(document.createTextNode(txt));
+        return d.innerHTML;
+    }
+</script>
+{% endblock %}

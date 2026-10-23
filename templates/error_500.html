@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Error - The Tech House</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #092C4C;
+            font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+            padding: 24px;
+        }
+        .caja {
+            background: #fff;
+            border-radius: 16px;
+            padding: 40px 36px;
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, .35);
+        }
+        .caja i { font-size: 56px; color: #FE9F43; }
+        .caja h1 { font-size: 24px; color: #092C4C; margin: 14px 0 8px; }
+        .caja p { color: #6b7a8c; line-height: 1.6; margin: 0 0 6px; }
+        .caja .detalle {
+            font-size: 13px;
+            background: #f4f6f9;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin: 18px 0;
+            color: #8895a7;
+        }
+        .caja a {
+            display: inline-block;
+            background: #FE9F43;
+            color: #fff;
+            font-weight: 700;
+            text-decoration: none;
+            padding: 12px 26px;
+            border-radius: 10px;
+        }
+        .caja a:hover { background: #ef8c2b; }
+    </style>
+</head>
+<body>
+<div class="caja">
+    <i class="ti ti-alert-triangle"></i>
+    <h1>No se pudo completar la operacion</h1>
+    <p>Ocurrio un error inesperado. <strong>Ningun cambio se guardo</strong>
+       y tus datos siguen exactamente como estaban.</p>
+    <div class="detalle">Vuelve a intentarlo. Si se repite, avisa al administrador del sistema.</div>
+    <a href="javascript:history.back()">Volver</a>
+</div>
+</body>
+</html>

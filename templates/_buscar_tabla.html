@@ -1,0 +1,67 @@
+{# Buscador de tabla (client-side).
+   Requiere en el contexto:
+     buscador.id      -> id del input
+     buscador.tabla   -> id del <tbody>
+     buscador.count   -> id del badge de conteo
+     buscador.cols    -> colspan de la fila "sin resultados"
+     buscador.total   -> total de filas
+     buscador.etiqueta-> texto del badge ("productos", "compras", ...)
+   Cada <tr> debe tener data-buscar="...|lower" #}
+<script>
+(function() {
+    var input = document.getElementById('{{ buscador.id }}');
+    var body = document.getElementById('{{ buscador.tabla }}');
+    var count = document.getElementById('{{ buscador.count }}');
+    var cols = {{ buscador.cols }};
+    var total = {{ buscador.total }};
+    var etiqueta = {{ buscador.etiqueta|tojson }};
+    var vacioId = '{{ buscador.id }}Vacia';
+    var timer = null;
+
+    if (!input || !body || !count) return;
+
+    input.addEventListener('input', function() {
+        clearTimeout(timer);
+        var q = this.value.trim().toLowerCase();
+        timer = setTimeout(function() { filtrar(q); }, 150);
+    });
+
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') { input.value = ''; filtrar(''); }
+    });
+
+    function filtrar(q) {
+        var filas = body.querySelectorAll('tr[data-buscar]');
+        var vis = 0;
+        for (var i = 0; i < filas.length; i++) {
+            var ok = q === '' || filas[i].getAttribute('data-buscar').indexOf(q) !== -1;
+            filas[i].style.display = ok ? '' : 'none';
+            if (ok) vis++;
+        }
+        count.textContent = (q === '') ? (total + ' ' + etiqueta)
+                                       : (vis + ' de ' + total + ' ' + etiqueta);
+        quitarVacia();
+        if (q !== '' && vis === 0 && total > 0) mostrarVacia(q);
+    }
+
+    function mostrarVacia(q) {
+        var tr = document.createElement('tr');
+        tr.id = vacioId;
+        tr.innerHTML = '<td colspan="' + cols + '" class="text-center text-muted-dp py-4">' +
+            '<i class="ti ti-search-off" style="font-size:2rem;opacity:.3;"></i><br>' +
+            'No se encontraron resultados para "<strong>' + esc(q) + '</strong>"</td>';
+        body.appendChild(tr);
+    }
+
+    function quitarVacia() {
+        var f = document.getElementById(vacioId);
+        if (f && f.parentNode) f.parentNode.removeChild(f);
+    }
+
+    function esc(s) {
+        return String(s).replace(/[&<>"]/g, function(c) {
+            return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c];
+        });
+    }
+})();
+</script>
