@@ -2,6 +2,8 @@
 
 Sistema de Punto de Venta (POS) e Inventario desarrollado con Flask, MySQL y Bootstrap 5.
 
+**Repositorio:** https://github.com/userysanch/the_tech_house
+
 ## 🛠️ Stack Tecnológico
 
 - **Backend:** Python con Flask

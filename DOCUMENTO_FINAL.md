@@ -149,7 +149,7 @@ se vean con contenido. `limpiar_demo.sql` permite volver al estado inicial.
 
 1. **Este documento PDF** (problema, objetivo, alcance, reglas de negocio y
    link del repositorio).
-2. **Repositorio en GitHub:** [LINK_DEL_REPOSITORIO]
+2. **Repositorio en GitHub:** https://github.com/userysanch/the_tech_house
    - Diagrama entidad-relación (`FASE_2.md` §5).
    - Script SQL (`schema.sql`, `procedimientos.sql`).
    - Código fuente de la API (`routes/`, `models/`, `app.py`, `config.py`).
