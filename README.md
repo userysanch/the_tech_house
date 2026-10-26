@@ -51,13 +51,23 @@ O copia y pega el contenido de cada archivo en tu cliente MySQL.
 
 ### 5. Configurar la conexión a la base de datos
 
-Edita el archivo `app.py` y actualiza la URI de la base de datos:
+Copia el archivo de ejemplo como `.env` y pon ahí tus credenciales
+(el `.env` es local: `.gitignore` impide que se suba a Git, así que **las
+contraseñas nunca quedan en el código fuente**):
 
-```python
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://usuario:contraseña@localhost/the_tech_house_db'
+```bash
+copy .env.example .env
 ```
 
-Reemplaza `usuario` y `contraseña` con tus credenciales de MySQL.
+Edita `.env`:
+
+```
+DATABASE_URL=mysql+pymysql://root:tu_password@localhost/the_tech_house
+SECRET_KEY=una_clave_secreta_cualquiera
+```
+
+Reemplaza `tu_password` con tu contraseña de MySQL. La aplicación
+(`config.py`) lee ese archivo al arrancar.
 
 ### 6. Ejecutar la aplicación
 

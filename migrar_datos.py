@@ -1,7 +1,9 @@
+import os
 import openpyxl
 from datetime import datetime, date
 from collections import defaultdict
 import pymysql
+import config  # carga las variables de entorno desde .env
 
 EXCEL_PATH = r'G:\Mi unidad\SISTEMA TECH-HOUSE\TECH HOUSE.xlsm'
 TODAY = date.today().isoformat()  # Excluir ventas de hoy
@@ -172,7 +174,11 @@ print(f"  Total ganancia: Q{total_g:.2f}")
 
 # ==================== 6. INSERTAR EN MYSQL ====================
 print("\n=== Insertando en MySQL ===")
-conn = pymysql.connect(host='localhost', user='root', password='12345', database='the_tech_house', charset='utf8mb4')
+conn = pymysql.connect(host=os.environ.get('MYSQL_HOST', 'localhost'),
+                       user=os.environ.get('MYSQL_USER', 'root'),
+                       password=os.environ.get('MYSQL_PASSWORD', ''),
+                       database=os.environ.get('MYSQL_DB', 'the_tech_house'),
+                       charset='utf8mb4')
 cursor = conn.cursor()
 
 print("  Limpiando tablas...")

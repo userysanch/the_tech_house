@@ -145,6 +145,48 @@ cualquier dependencia parcial y permite renglones repetidos del mismo producto.
 **Conclusión:** todas las tablas están en 3FN (todavía en BCN); no se detectan
 anomalías de actualización, inserción o borrado en los catálogos.
 
+### 6.1 Normalización detallada de tres tablas representativas
+
+Requisito A8 de la rúbrica: dependencias funcionales (notación `X → Y` =
+conocer X determina unívocamente a Y) y justificación del diseño final.
+
+#### a) `detalle_ventas` — clave natural (`venta_id`, `codigo_producto`)
+
+| Dependencia funcional | Análisis |
+|---|---|
+| `venta_id, codigo_producto → cantidad, precio_unitario, total, ganancia` | Los atributos dependen de la **clave completa** de la línea; no de una parte → cumple 2FN |
+| `cantidad, precio_unitario → total` | `total = cantidad × precio_unitario`; se **almacena** para conservar el importe histórico aunque después cambie el precio de lista (no se recalcula al leer) |
+| `venta_id, codigo_producto → ganancia` | `ganancia = precio_unitario − costo`; el costo **no** está en la tabla, evitando la transitiva `venta → producto → costo` (3FN) |
+
+- **1FN:** valores atómicos (una cantidad por fila); no existen "producto1,
+  producto2" ni una columna con los ítems de la venta.
+- **Anomalías evitadas:** los datos de la cabecera (fecha, cliente, total)
+  viven en `ventas`, no se repiten en cada línea; borrar una venta borra sus
+  líneas (`ON DELETE CASCADE`).
+- **Justificación del `id` surrogate:** evita renglones repetidos cuando un
+  mismo producto aparece dos veces en la venta y mantiene una PK simple.
+
+#### b) `productos` — clave natural `codigo` (UNIQUE)
+
+| Dependencia funcional | Análisis |
+|---|---|
+| `codigo → nombre, costo, margen, precio, stock, codigo_barras, categoria_id, marca_id, proveedor_id` | Todo atributo no clave depende de la clave (PK simple ⇒ 2FN cumplida automáticamente) |
+| ~~`categoria_id → categoria_nombre`~~ | **Eliminada:** `categoria_nombre` no existe; se resuelve con FK a `categorias` (3FN) |
+| ~~`proveedor_id → proveedor_nombre, proveedor_nit`~~ | **Eliminada:** FK a `proveedores` (3FN) |
+| `costo, margen → precio` | Derivado de negocio: `precio = costo × (1 + margen/100)`; se **almacena** para no recalcular en cada consulta y se **recalcula solo al editar** costo/margen (decisión documentada, no es redundancia accidental) |
+
+#### c) `turnos_caja` — clave `id`
+
+| Dependencia funcional | Análisis |
+|---|---|
+| `id → caja_id, usuario_id, fecha_apertura, fecha_cierre, saldo_inicial, saldo_final, estado` | PK simple ⇒ sin dependencias parciales (2FN) |
+| `caja_id → cajas(nombre)` / `usuario_id → usuarios(nombre)` | No se copian los nombres al turno: FK a sus catálogos (3FN) |
+| `saldo_final = saldo_inicial + SUM(movimientos.ingresos) − SUM(movimientos.egresos)` | **No** es una transitiva almacenada: el saldo se calcula **una sola vez** al cerrar el turno con `sp_cerrar_caja` y se guarda como cierre de caja (auditoría); la fuente de verdad de los movimientos sigue siendo `movimientos_caja` |
+
+- **Restricciones:** `estado ENUM('abierto','cerrado')`, `NOT NULL` en
+  saldo_inicial y FKs — impiden datos inválidos (requisito técnico B4).
+
+
 ---
 
 ## 7. Procedimientos almacenados (con transacciones)

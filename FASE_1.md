@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS detalle_ventas (
 );
 ```
 
-## Configuración de Flask (app.py)
+## Configuración de Flask (config.py + .env)
 
 ```python
 import os
@@ -80,7 +80,7 @@ from flask_sqlalchemy import SQLAlchemy
 app = Flask(__name__)
 
 # Configuración de la base de datos MySQL
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'mysql+pymysql://user:password@localhost/the_tech_house_db')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'mysql+pymysql://root@localhost/the_tech_house')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -93,6 +93,11 @@ if __name__ == '__main__':
         db.create_all() # Crea las tablas si no existen
     app.run(debug=True)
 ```
+
+En la implementación final, `config.py` carga primero el archivo `.env`
+(local, ignorado por Git) y lee `DATABASE_URL` desde ahí: la contraseña de la
+base de datos nunca queda escrita en el código fuente (requisito B4 de la
+rúbrica). Ver `.env.example`.
 
 ---
 
