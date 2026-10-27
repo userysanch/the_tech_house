@@ -89,6 +89,10 @@ incompleta deje la información inconsistente.
 | 19 | `turnos_caja` | `id` | `caja_id → cajas.id`, `usuario_id → usuarios.id` | Apertura/cierre de turno con saldos. |
 | 20 | `movimientos_caja` | `id` | `turno_id → turnos_caja.id` | Ingresos, egresos y ventas del turno. |
 
+El diagrama visual completo (PK subrayada, FK en cursiva, cardinalidades 1↔N)
+está en el repositorio como `Modelo_Relacional_TheTechHouse.png` y en PDF
+`Modelo_Relacional_TheTechHouse.pdf`.
+
 ### 5.2 Diagrama Entidad-Relación (texto)
 
 ```

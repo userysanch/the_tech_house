@@ -207,7 +207,8 @@ dependencias funcionales.
 
 **¿Y el diagrama entidad-relación?**
 En FASE_2.md, sección 5: entidades, atributos, relaciones y cardinalidades
-de las 20 tablas.
+de las 20 tablas; y el diagrama visual impreso en
+`Modelo_Relacional_TheTechHouse.png` (o el PDF del mismo nombre).
 
 **¿Cómo evitas contraseñas en el código?**
 La conexión a SQL Server usa autenticación de Windows (trusted connection),
