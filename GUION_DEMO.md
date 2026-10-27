@@ -106,9 +106,9 @@ sembrados, así que todo se ve con contenido."*
 ### Paso 7 — Reportes con GROUP BY (30 s)
 1. Menú **Reporte** → sección **"Reportes agrupados (GROUP BY en SQL)"**:
    - Ventas por categoría (`SUM`/`COUNT` agrupado),
-   - Ventas por mes (`DATE_FORMAT`),
-   - Top 10 productos (`LIMIT`).
-2. *"Estas tres consultas corren en MySQL con GROUP BY; los mismos datos
+   - Ventas por mes (`CONVERT` + `GROUP BY`),
+   - Top 10 productos (`TOP 10`).
+2. *"Estas tres consultas corren en SQL Server con GROUP BY; los mismos datos
    están en los endpoints `/api/reporte/…`."*
 
 ### Paso 8 — La API (30 s)
@@ -141,25 +141,27 @@ datos directamente. La mía está en `/api` con endpoints como
 `GET /api/productos` y `POST /api/ventas`.
 
 **¿Dónde está mi tabla?**
-La base se llama `the_tech_house` en MySQL y tiene 20 tablas; se ven todas
-con `SELECT * FROM productos;` en Workbench, el modelo completo está en
-`schema.sql` y en el sistema aparecen en las pantallas: productos en
-Inventario, ventas en Ventas, movimientos de caja en Caja, etc.
+La base se llama `TheTechHouse` en SQL Server ( instancia `(local)\SQLEXPRESS`)
+y tiene 20 tablas; se ven todas con `SELECT * FROM productos;` en SQL Server
+Management Studio, el modelo completo está en `schema.sql` y en el sistema
+aparecen en las pantallas: productos en Inventario, ventas en Ventas,
+movimientos de caja en Caja, etc.
 
-**¿Por qué el ROLLBACK va al principio del procedimiento?**
-En MySQL esa sintaxis declara el manejador de errores al inicio: todo el
-cuerpo del procedimiento es el bloque TRY implícito. El ROLLBACK no se
-"ejecuta" al principio, se **declara ahí y queda activo**: si en cualquier
-punto (insert, update, validación) ocurre un error, salta al manejador,
-revierte todo y propaga el error. Es el equivalente al `BEGIN TRY /
-BEGIN CATCH` de SQL Server — allá el ROLLBACK está dentro del CATCH; acá,
-en el manejador que se declara arriba.
+**¿Por qué el ROLLBACK va dentro del CATCH?**
+Porque ese es exactamente el patrón que vimos en clase con T-SQL: el
+procedimiento declara `BEGIN TRY … BEGIN TRANSACTION`, hace las validaciones
+con `THROW` y el trabajo (INSERT/UPDATE) dentro del TRY, y en el
+`BEGIN CATCH` pone `IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION` y vuelve a
+lanzar el error con `THROW`. Así, si algo falla en cualquier punto, se
+revierte TODO lo que se haya escrito y la pantalla recibe el mensaje
+exacto del error. En nuestro caso, si el stock no alcanza, la venta no
+queda a medias: ni cabecera, ni detalle, ni kardex, ni caja.
 
 **¿Cómo demuestro el ROLLBACK en vivo?**
 En Caja intento vender 9,999 unidades de un producto que tiene 10. El
 sistema responde *"STOCK INSUFICIENTE PARA UNO O MAS PRODUCTOS"* (el SP
-valida ANTES de la transacción); y si el error ocurriera dentro de la
-transacción, el manejador haría ROLLBACK: se puede verificar con
+valida con THROW antes de escribir); y si el error ocurriera dentro de la
+transacción, el CATCH haría ROLLBACK: se puede verificar con
 `SELECT COUNT(*) FROM ventas;` y `SELECT stock FROM productos WHERE codigo='P001';`
 que no cambió nada.
 
@@ -208,13 +210,17 @@ En FASE_2.md, sección 5: entidades, atributos, relaciones y cardinalidades
 de las 20 tablas.
 
 **¿Cómo evitas contraseñas en el código?**
-En `.env`, que está en `.gitignore` y nunca se sube; `config.py` lo lee al
-arrancar. En la base, las contraseñas se guardan con hash scrypt.
+La conexión a SQL Server usa autenticación de Windows (trusted connection),
+así que no hay usuario ni contraseña de base de datos en el código fuente;
+el archivo `.env` está en `.gitignore` y nunca se sube. En la base, las
+contraseñas de los usuarios se guardan con hash scrypt.
 
-**¿Por qué usas MySQL si el PDF dice "preferiblemente SQL Server"?**
-El PDF dice *preferiblemente*; MySQL cumple todo lo obligatorio: relación,
-PK/FK, restricciones, procedimientos almacenados y transacciones. El
-código del API y los SPs son transportables.
+**¿Por qué SQL Server y no otra base?**
+Porque el proyecto académico lo pide "preferiblemente" en SQL Server, y
+además el patrón de `BEGIN TRY / BEGIN CATCH / THROW` con tipos de tabla
+(TVP) es exactamente el que vimos en clase: los procedimientos
+almacenados (`SP_REGISTRARVENTA`, `SP_CERRARCAJA`, `SP_APLICARDEVOLUCION`)
+están escritos en T-SQL puro, con transacciones y ROLLBACK en el CATCH.
 
 ---
 

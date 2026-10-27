@@ -163,12 +163,12 @@ se vean con contenido. `limpiar_demo.sql` permite volver al estado inicial.
 # 1. Dependencias
 python -m pip install -r requirements.txt
 
-# 2. Base de datos
-mysql -u root -p < schema.sql
-mysql -u root -p < procedimientos.sql
+# 2. Base de datos (SQL Server — crea TheTechHouse + 20 tablas + 3 SP)
+sqlcmd -S (local)\SQLEXPRESS -E -i schema.sql
+sqlcmd -S (local)\SQLEXPRESS -E -i procedimientos.sql
 
-# 3. Credenciales (no van en el código)
-copy .env.example .env     # y editar con tu password de MySQL
+# 3. Conexión: autenticación de Windows (no hay credenciales en el código)
+copy .env.example .env     # solo si hay que ajustar la instancia
 
 # 4. Datos de demostración (opcional)
 python sembrar_demo.py

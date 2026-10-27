@@ -2,7 +2,7 @@ from functools import wraps
 
 from flask import Blueprint, jsonify, request
 from flask_login import current_user
-from sqlalchemy import func
+from sqlalchemy import func, literal_column
 
 from extensions import db
 from models import (
@@ -253,15 +253,10 @@ def ventas_crear():
     items = d.get('items') or []
     if not items:
         return jsonify({'ok': False, 'mensaje': 'La venta no tiene items.'}), 400
-    import json as _json_mod
+    import sp
     try:
-        db.session.execute(db.text('SET @venta_id = 0'))
-        db.session.execute(
-            db.text('CALL SP_REGISTRARVENTA(:cli, :fp, :items, @venta_id)'),
-            {'cli': d.get('cliente_id'), 'fp': d.get('forma_pago_id'),
-             'items': _json_mod.dumps(items)}
-        )
-        venta_id = db.session.execute(db.text('SELECT @venta_id')).scalar()
+        venta_id = sp.registrar_venta(
+            d.get('cliente_id'), d.get('forma_pago_id'), items)
         db.session.commit()
     except Exception as exc:
         db.session.rollback()
@@ -278,15 +273,10 @@ def devoluciones_crear():
     items = d.get('items') or []
     if not items or not d.get('venta_id'):
         return jsonify({'ok': False, 'mensaje': 'venta_id e items requeridos.'}), 400
-    import json as _json_mod
+    import sp
     try:
-        db.session.execute(db.text('SET @dev_id = 0'))
-        db.session.execute(
-            db.text('CALL SP_APLICARDEVOLUCION(:vid, :motivo, :items, @dev_id)'),
-            {'vid': d['venta_id'], 'motivo': d.get('motivo', ''),
-             'items': _json_mod.dumps(items)}
-        )
-        dev_id = db.session.execute(db.text('SELECT @dev_id')).scalar()
+        dev_id = sp.aplicar_devolucion(
+            d['venta_id'], d.get('motivo', ''), items)
         db.session.commit()
     except Exception as exc:
         db.session.rollback()
@@ -328,13 +318,13 @@ def reporte_ventas_por_categoria():
 def reporte_ventas_por_mes():
     filas = (
         db.session.query(
-            func.date_format(Venta.fecha, '%Y-%m'),
+            literal_column("CONVERT(VARCHAR(7), ventas.fecha, 120)"),
             func.count(Venta.id),
             func.coalesce(func.sum(Venta.total_venta), 0),
             func.coalesce(func.sum(Venta.ganancia_total), 0),
         )
-        .group_by(func.date_format(Venta.fecha, '%Y-%m'))
-        .order_by(func.date_format(Venta.fecha, '%Y-%m').desc())
+        .group_by(literal_column("CONVERT(VARCHAR(7), ventas.fecha, 120)"))
+        .order_by(literal_column("CONVERT(VARCHAR(7), ventas.fecha, 120)").desc())
         .all()
     )
     return jsonify([

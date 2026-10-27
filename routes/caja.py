@@ -1,5 +1,4 @@
-﻿import json
-import re
+﻿import re
 from datetime import datetime
 
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
@@ -15,9 +14,9 @@ caja_bp = Blueprint('caja', __name__)
 
 
 def _mensaje_error(e):
-    """Extrae el MESSAGE_TEXT de un SIGNAL del stored procedure."""
-    m = re.search(r"\(\d+, '([^']+)'\)", str(e))
-    return m.group(1) if m else 'No se pudo completar la operacion. Nada se guardo.'
+    """Extrae el mensaje de error del SP (THROW) de un error de pyodbc."""
+    m = re.search(r'\[SQL Server\](.+?)(?: \(SQLSTATE|\(\d+\)|\'|$)', str(e))
+    return m.group(1).strip() if m else 'No se pudo completar la operacion. Nada se guardo.'
 
 
 def _turno_abierto():
@@ -45,7 +44,7 @@ def _serializar_productos(productos):
     promos = {}
     if productos:
         filas = (Promocion.query
-                 .filter(Promocion.activa.is_(True),
+                 .filter(Promocion.activa == True,
                          Promocion.fecha_inicio <= ahora,
                          Promocion.fecha_fin >= ahora,
                          Promocion.codigo_producto.in_([p.codigo for p in productos]))
@@ -111,8 +110,8 @@ def caja_view():
                 flash('No hay ningun turno abierto.', 'warning')
                 return redirect(url_for('caja.caja_view'))
             try:
-                db.session.execute(
-                    db.text('CALL SP_CERRARCAJA(:id)'), {'id': turno.id})
+                import sp
+                sp.cerrar_caja(turno.id)
                 db.session.commit()
             except Exception as exc:
                 db.session.rollback()
@@ -230,13 +229,8 @@ def registrar_venta():
         return jsonify({'success': False, 'message': 'Carrito invalido.'})
 
     try:
-        db.session.execute(db.text('SET @venta_id = 0'))
-        db.session.execute(
-            db.text('CALL SP_REGISTRARVENTA(:cli, :fp, :items, @venta_id)'),
-            {'cli': cliente_id, 'fp': forma_pago_id,
-             'items': json.dumps(items)}
-        )
-        venta_id = db.session.execute(db.text('SELECT @venta_id')).scalar()
+        import sp
+        venta_id = sp.registrar_venta(cliente_id, forma_pago_id, items)
         db.session.commit()
     except Exception as exc:
         db.session.rollback()

@@ -77,7 +77,7 @@ Tres tarjetas con consultas agregadas reales (no calculadas en Python):
 
 - Ventas por categoría (`SUM`/`COUNT` agrupado por `Categoria.nombre`).
 - Ventas por mes (`DATE_FORMAT('%Y-%m')`).
-- Top 10 productos más vendidos (`LIMIT 10`).
+- Top 10 productos más vendidos (`TOP 10`).
 
 ## 3. Datos de demostración
 
@@ -85,8 +85,8 @@ Tres tarjetas con consultas agregadas reales (no calculadas en Python):
   2 proveedores, 2 clientes, 6 productos con entradas y kardex, 3 ventas
   (2 de este mes y 1 del mes pasado), 1 devolución, 1 turno cerrado con
   movimientos y 1 promoción activa.
-- `mysql -u root -p the_tech_house < limpiar_demo.sql` — elimina lo demo y
-  deja la base solo con los seeds de `schema.sql`.
+- `sqlcmd -S (local)\SQLEXPRESS -E -d TheTechHouse -i limpiar_demo.sql` —
+  elimina lo demo y deja la base solo con los seeds de `schema.sql`.
 
 ## 4. Pruebas ejecutadas
 

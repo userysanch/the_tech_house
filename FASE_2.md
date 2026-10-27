@@ -1,7 +1,7 @@
 ﻿# FASE 2: Diseño de Base de Datos, API JSON, Procedimientos Almacenados y Documentación
 
 Sistema **The Tech House** — Punto de Venta (POS) e Inventario para una tienda de
-tecnología, construido con Flask + MySQL.
+tecnología, construido con Flask + SQL Server.
 
 ---
 
@@ -266,11 +266,11 @@ the_tech_house/
 └── FASE_2.md           → este documento
 ```
 
-Instalación desde cero:
+Instalación desde cero (SQL Server):
 
-```bash
-mysql -u root -p < schema.sql
-mysql -u root -p < procedimientos.sql
+```bat
+sqlcmd -S (local)\SQLEXPRESS -E -i schema.sql
+sqlcmd -S (local)\SQLEXPRESS -E -i procedimientos.sql
 python app.py
 # Abrir https://localhost:5000 → login admin/admin123
 ```

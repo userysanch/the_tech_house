@@ -24,10 +24,12 @@ class Config:
     # Clave secreta de sesiones (definida en .env)
     SECRET_KEY = os.environ.get('SECRET_KEY', 'the_tech_house_secret_key_2026')
 
-    # Base de datos: NUNCA se escribe la contrasena en el codigo fuente.
-    # Se define en .env, por ejemplo:
-    #   DATABASE_URL=mysql+pymysql://root:tu_password@localhost/the_tech_house
+    # Base de datos: Microsoft SQL Server (SQLEXPRESS).
+    # La contrasena NUNCA se escribe en el codigo fuente; la autenticacion
+    # es de Windows (trusted connection) y se configura en .env si hace falta.
     SQLALCHEMY_DATABASE_URI = os.environ.get(
-        'DATABASE_URL', 'mysql+pymysql://root@localhost/the_tech_house')
+        'DATABASE_URL',
+        'mssql+pyodbc://@localhost\\SQLEXPRESS/TheTechHouse'
+        '?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes')
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False

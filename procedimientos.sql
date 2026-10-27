@@ -1,317 +1,303 @@
 -- ============================================================
 -- The Tech House - Procedimientos almacenados
--- (MySQL equivalente al bloque BEGIN TRY / BEGIN CATCH de SQL Server:
---  todo el cuerpo del procedimiento es el TRY implicito y el
---  manejador de errores que se declara al inicio hace de CATCH.)
+-- Motor: Microsoft SQL Server (T-SQL)
+-- Estructura: BEGIN TRY / BEGIN CATCH con transacciones,
+-- igual que el patron visto en clase.
 -- ============================================================
 
-USE the_tech_house;
+USE TheTechHouse;
+GO
 
-DELIMITER $$
+-- Tipo de tabla para enviar el detalle de la venta / devolucion
+-- (equivalente a la tabla tipo TIPODETALLEVENTA de la clase)
+IF TYPE_ID('dbo.TIPODETALLEVENTA') IS NOT NULL
+    DROP TYPE dbo.TIPODETALLEVENTA;
+GO
+CREATE TYPE dbo.TIPODETALLEVENTA AS TABLE (
+    CODIGOPRODUCTO VARCHAR(50),
+    CANTIDAD INT,
+    PRECIO DECIMAL(10, 2)
+);
+GO
 
 -- ------------------------------------------------------------
 -- SP_REGISTRARVENTA
--- Registra una venta completa en UNA sola transaccion.
---
--- Orden (igual que el visto en clase):
---   1) Validaciones ANTES de tocar la base.
---   2) BEGIN TRANSACTION (START TRANSACTION en MySQL).
---   3) INSERT venta, INSERT detalle, UPDATE stock.
---   4) COMMIT si todo salio bien.
---   5) Si algo falla, el manejador de errores (CATCH) hace
---      ROLLBACK y propaga el error: no queda nada a medias.
---
--- p_items = JSON: [{"codigo":"P001","cantidad":2,"precio":10.50}, ...]
+-- Registra una venta completa en UNA sola transaccion:
+--   1) Cabecera de la venta.
+--   2) Detalle de cada item.
+--   3) Descuento de existencias.
+--   4) Kardex (salida), pago y movimiento de caja.
+-- Si algo falla: ROLLBACK total y propaga el error (THROW).
 -- ------------------------------------------------------------
-DROP PROCEDURE IF EXISTS SP_REGISTRARVENTA$$
-CREATE PROCEDURE SP_REGISTRARVENTA(
-    IN p_cliente_id INT,
-    IN p_forma_pago_id INT,
-    IN p_items JSON,
-    OUT p_venta_id INT
-)
+IF OBJECT_ID('dbo.SP_REGISTRARVENTA', 'P') IS NOT NULL
+    DROP PROCEDURE dbo.SP_REGISTRARVENTA;
+GO
+CREATE PROCEDURE SP_REGISTRARVENTA
+    @CLIENTE_ID INT,
+    @FORMA_PAGOID INT,
+    @DETALLES TIPODETALLEVENTA READONLY,
+    @VENTA_ID INT OUTPUT
+AS
 BEGIN
-    DECLARE v_n INT DEFAULT 0;
-    DECLARE v_i INT DEFAULT 0;
-    DECLARE v_codigo VARCHAR(50);
-    DECLARE v_cantidad INT;
-    DECLARE v_precio DECIMAL(10, 2);
-    DECLARE v_stock INT;
-    DECLARE v_costo DECIMAL(10, 2);
-    DECLARE v_total DECIMAL(10, 2) DEFAULT 0.00;
-    DECLARE v_ganancia DECIMAL(10, 2) DEFAULT 0.00;
-    DECLARE v_turno_id INT DEFAULT NULL;
+    SET NOCOUNT ON;
 
-    -- CATCH: si cualquier instruccion falla, se revierte TODO y
-    -- se re-lanza el error hacia quien llamo al procedimiento.
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
+    BEGIN TRY
+        BEGIN TRANSACTION;
 
-    -- ============ 1) VALIDACIONES (antes de la transaccion) ============
-    SET v_n = JSON_LENGTH(p_items);
-    IF v_n IS NULL OR v_n = 0 THEN
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'DEBE ENVIAR AL MENOS UN PRODUCTO';
-    END IF;
+        -- ============ VALIDACIONES ============
+        IF NOT EXISTS (SELECT 1 FROM @DETALLES)
+        BEGIN;
+            THROW 50001, 'DEBE ENVIAR AL MENOS UN PRODUCTO', 1;
+        END;
 
-    -- Recorrer los items para validar cada uno antes de escribir
-    WHILE v_i < v_n DO
-        SET v_codigo = JSON_UNQUOTE(JSON_EXTRACT(p_items, CONCAT('$[', v_i, '].codigo')));
-        SET v_cantidad = CAST(JSON_EXTRACT(p_items, CONCAT('$[', v_i, '].cantidad')) AS UNSIGNED);
-        SET v_precio = CAST(JSON_EXTRACT(p_items, CONCAT('$[', v_i, '].precio')) AS DECIMAL(10, 2));
+        IF EXISTS (SELECT 1 FROM @DETALLES WHERE CANTIDAD <= 0)
+        BEGIN;
+            THROW 50002, 'LA CANTIDAD DEBE SER MAYOR A CERO', 1;
+        END;
 
-        IF v_cantidad IS NULL OR v_cantidad <= 0 OR v_precio IS NULL OR v_precio < 0 THEN
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = 'LA CANTIDAD DEBE SER MAYOR A CERO';
-        END IF;
+        IF EXISTS (
+            SELECT 1 FROM @DETALLES D
+            WHERE D.CODIGOPRODUCTO NOT IN (SELECT CODIGO FROM PRODUCTOS)
+        )
+        BEGIN;
+            THROW 50003, 'UNO O MAS PRODUCTOS NO EXISTEN', 1;
+        END;
 
-        SELECT stock INTO v_stock
-        FROM productos
-        WHERE codigo = v_codigo
-        FOR UPDATE;   -- bloquea la fila para que nadie venda lo mismo a la vez
+        IF EXISTS (
+            SELECT 1 FROM @DETALLES D
+            WHERE D.CANTIDAD > (SELECT STOCK FROM PRODUCTOS WHERE CODIGO = D.CODIGOPRODUCTO)
+        )
+        BEGIN;
+            THROW 50004, 'STOCK INSUFICIENTE PARA UNO O MAS PRODUCTOS', 1;
+        END;
 
-        IF v_stock IS NULL THEN
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = 'UNO O MAS PRODUCTOS NO EXISTEN';
-        END IF;
+        -- ============ TOTAL ============
+        DECLARE @TOTAL DECIMAL(10,2);
+        DECLARE @GANANCIA DECIMAL(10,2);
+        SELECT @TOTAL = SUM(D.CANTIDAD * D.PRECIO),
+               @GANANCIA = SUM(D.CANTIDAD * (D.PRECIO - P.COSTO))
+        FROM @DETALLES D
+        INNER JOIN PRODUCTOS P ON P.CODIGO = D.CODIGOPRODUCTO;
 
-        IF v_stock < v_cantidad THEN
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = 'STOCK INSUFICIENTE PARA UNO O MAS PRODUCTOS';
-        END IF;
+        -- ============ CABECERA DE LA VENTA ============
+        INSERT INTO VENTAS (FECHA, TOTAL_VENTA, GANANCIA_TOTAL, CLIENTE_ID)
+        VALUES (GETDATE(), @TOTAL, @GANANCIA, @CLIENTE_ID);
 
-        SET v_i = v_i + 1;
-    END WHILE;
+        SET @VENTA_ID = SCOPE_IDENTITY();
 
-    -- ============ 2) TRANSACCION ============
-    START TRANSACTION;
+        -- ============ DETALLE + EXISTENCIAS + KARDEX ============
+        INSERT INTO DETALLE_VENTAS (VENTA_ID, CODIGO_PRODUCTO, CANTIDAD, PRECIO_UNITARIO, TOTAL, GANANCIA)
+        SELECT @VENTA_ID, D.CODIGOPRODUCTO, D.CANTIDAD, D.PRECIO,
+               D.CANTIDAD * D.PRECIO,
+               D.CANTIDAD * (D.PRECIO - P.COSTO)
+        FROM @DETALLES D
+        INNER JOIN PRODUCTOS P ON P.CODIGO = D.CODIGOPRODUCTO;
 
-    -- Cabecera de la venta
-    INSERT INTO ventas (fecha, total_venta, ganancia_total, cliente_id)
-    VALUES (NOW(), 0.00, 0.00, p_cliente_id);
-    SET p_venta_id = LAST_INSERT_ID();
+        UPDATE PRODUCTOS
+        SET STOCK = STOCK - D.CANTIDAD
+        FROM PRODUCTOS P
+        INNER JOIN @DETALLES D ON D.CODIGOPRODUCTO = P.CODIGO;
 
-    -- Detalle + descuento de stock + kardex
-    SET v_i = 0;
-    WHILE v_i < v_n DO
-        SET v_codigo = JSON_UNQUOTE(JSON_EXTRACT(p_items, CONCAT('$[', v_i, '].codigo')));
-        SET v_cantidad = CAST(JSON_EXTRACT(p_items, CONCAT('$[', v_i, '].cantidad')) AS UNSIGNED);
-        SET v_precio = CAST(JSON_EXTRACT(p_items, CONCAT('$[', v_i, '].precio')) AS DECIMAL(10, 2));
+        INSERT INTO MOVIMIENTOS_INVENTARIO (CODIGO_PRODUCTO, TIPO, CANTIDAD, REFERENCIA)
+        SELECT CODIGOPRODUCTO, 'salida', CANTIDAD, CONCAT('Venta #', @VENTA_ID)
+        FROM @DETALLES;
 
-        SELECT stock, costo INTO v_stock, v_costo
-        FROM productos
-        WHERE codigo = v_codigo
-        FOR UPDATE;
+        -- ============ PAGO ============
+        IF @FORMA_PAGOID IS NOT NULL
+        BEGIN
+            INSERT INTO PAGOS_VENTA (VENTA_ID, FORMA_PAGO_ID, MONTO)
+            VALUES (@VENTA_ID, @FORMA_PAGOID, @TOTAL);
+        END;
 
-        INSERT INTO detalle_ventas (venta_id, codigo_producto, cantidad, precio_unitario, total, ganancia)
-        VALUES (p_venta_id, v_codigo, v_cantidad, v_precio,
-                v_precio * v_cantidad,
-                (v_precio - v_costo) * v_cantidad);
+        -- ============ MOVIMIENTO DE CAJA (si hay turno abierto) ============
+        DECLARE @TURNO_ID INT;
+        SELECT TOP 1 @TURNO_ID = ID
+        FROM TURNOS_CAJA
+        WHERE ESTADO = 'abierto'
+        ORDER BY FECHA_APERTURA DESC;
 
-        UPDATE productos
-        SET stock = stock - v_cantidad
-        WHERE codigo = v_codigo;
+        IF @TURNO_ID IS NOT NULL
+        BEGIN
+            INSERT INTO MOVIMIENTOS_CAJA (TURNO_ID, TIPO, MONTO, DESCRIPCION)
+            VALUES (@TURNO_ID, 'venta', @TOTAL, CONCAT('Venta #', @VENTA_ID));
+        END;
 
-        INSERT INTO movimientos_inventario (codigo_producto, tipo, cantidad, referencia)
-        VALUES (v_codigo, 'salida', v_cantidad, CONCAT('Venta #', p_venta_id));
+        COMMIT TRANSACTION;
+        PRINT 'VENTA REGISTRADA CORRECTAMENTE. TOTAL: ' + CAST(@TOTAL AS VARCHAR);
 
-        SET v_total = v_total + (v_precio * v_cantidad);
-        SET v_ganancia = v_ganancia + ((v_precio - v_costo) * v_cantidad);
-        SET v_i = v_i + 1;
-    END WHILE;
-
-    UPDATE ventas
-    SET total_venta = v_total, ganancia_total = v_ganancia
-    WHERE id = p_venta_id;
-
-    -- Pago
-    IF p_forma_pago_id IS NOT NULL THEN
-        INSERT INTO pagos_venta (venta_id, forma_pago_id, monto)
-        VALUES (p_venta_id, p_forma_pago_id, v_total);
-    END IF;
-
-    -- Ingreso de caja si hay turno abierto
-    SELECT id INTO v_turno_id
-    FROM turnos_caja
-    WHERE estado = 'abierto'
-    ORDER BY fecha_apertura DESC
-    LIMIT 1;
-
-    IF v_turno_id IS NOT NULL THEN
-        INSERT INTO movimientos_caja (turno_id, tipo, monto, descripcion)
-        VALUES (v_turno_id, 'venta', v_total, CONCAT('Venta #', p_venta_id));
-    END IF;
-
-    -- ============ 4) COMMIT ============
-    COMMIT;
-END$$
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        PRINT 'ERROR: ' + ERROR_MESSAGE();
+        THROW;
+    END CATCH
+END
+GO
 
 -- ------------------------------------------------------------
 -- SP_CERRARCAJA
 -- Cierra un turno de caja: saldo_final = saldo_inicial + ingresos - egresos.
--- Valida primero; luego UPDATE en una sola transaccion.
 -- ------------------------------------------------------------
-DROP PROCEDURE IF EXISTS SP_CERRARCAJA$$
-CREATE PROCEDURE SP_CERRARCAJA(IN p_turno_id INT)
+IF OBJECT_ID('dbo.SP_CERRARCAJA', 'P') IS NOT NULL
+    DROP PROCEDURE dbo.SP_CERRARCAJA;
+GO
+CREATE PROCEDURE SP_CERRARCAJA
+    @TURNO_ID INT
+AS
 BEGIN
-    DECLARE v_estado VARCHAR(20);
-    DECLARE v_inicial DECIMAL(10, 2);
-    DECLARE v_delta DECIMAL(10, 2);
+    SET NOCOUNT ON;
 
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
+    BEGIN TRY
+        BEGIN TRANSACTION;
 
-    -- 1) VALIDACIONES
-    SELECT estado, saldo_inicial INTO v_estado, v_inicial
-    FROM turnos_caja
-    WHERE id = p_turno_id
-    FOR UPDATE;
+        -- ============ VALIDACIONES ============
+        DECLARE @ESTADO VARCHAR(20);
+        DECLARE @INICIAL DECIMAL(10,2);
 
-    IF v_estado IS NULL THEN
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'EL TURNO DE CAJA NO EXISTE';
-    END IF;
+        SELECT @ESTADO = ESTADO, @INICIAL = SALDO_INICIAL
+        FROM TURNOS_CAJA
+        WHERE ID = @TURNO_ID;
 
-    IF v_estado <> 'abierto' THEN
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'EL TURNO DE CAJA YA ESTA CERRADO';
-    END IF;
+        IF @ESTADO IS NULL
+        BEGIN;
+            THROW 50006, 'EL TURNO DE CAJA NO EXISTE', 1;
+        END;
 
-    -- 2) TRANSACCION
-    START TRANSACTION;
+        IF @ESTADO <> 'abierto'
+        BEGIN;
+            THROW 50007, 'EL TURNO DE CAJA YA ESTA CERRADO', 1;
+        END;
 
-    SELECT COALESCE(SUM(CASE WHEN tipo IN ('ingreso', 'venta') THEN monto ELSE -monto END), 0)
-    INTO v_delta
-    FROM movimientos_caja
-    WHERE turno_id = p_turno_id;
+        -- ============ CALCULO Y CIERRE ============
+        DECLARE @DELTA DECIMAL(10,2);
+        SELECT @DELTA = COALESCE(SUM(CASE WHEN TIPO IN ('ingreso', 'venta') THEN MONTO ELSE -MONTO END), 0)
+        FROM MOVIMIENTOS_CAJA
+        WHERE TURNO_ID = @TURNO_ID;
 
-    UPDATE turnos_caja
-    SET saldo_final = v_inicial + v_delta,
-        fecha_cierre = NOW(),
-        estado = 'cerrado'
-    WHERE id = p_turno_id;
+        UPDATE TURNOS_CAJA
+        SET SALDO_FINAL = @INICIAL + @DELTA,
+            FECHA_CIERRE = GETDATE(),
+            ESTADO = 'cerrado'
+        WHERE ID = @TURNO_ID;
 
-    COMMIT;
+        COMMIT TRANSACTION;
+        PRINT 'CAJA CERRADA. SALDO FINAL: ' + CAST(@INICIAL + @DELTA AS VARCHAR);
 
-    SELECT v_inicial + v_delta AS saldo_final;
-END$$
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        PRINT 'ERROR: ' + ERROR_MESSAGE();
+        THROW;
+    END CATCH
+END
+GO
 
 -- ------------------------------------------------------------
 -- SP_APLICARDEVOLUCION
 -- Devuelve mercancia de una venta: crea la devolucion, repone el
 -- stock y registra el kardex. Todo en una transaccion.
---   p_items = JSON: [{"codigo":"P001","cantidad":1}, ...]
 -- ------------------------------------------------------------
-DROP PROCEDURE IF EXISTS SP_APLICARDEVOLUCION$$
-CREATE PROCEDURE SP_APLICARDEVOLUCION(
-    IN p_venta_id INT,
-    IN p_motivo VARCHAR(200),
-    IN p_items JSON,
-    OUT p_devolucion_id INT
-)
+IF OBJECT_ID('dbo.SP_APLICARDEVOLUCION', 'P') IS NOT NULL
+    DROP PROCEDURE dbo.SP_APLICARDEVOLUCION;
+GO
+CREATE PROCEDURE SP_APLICARDEVOLUCION
+    @VENTA_ID INT,
+    @MOTIVO VARCHAR(200),
+    @DETALLES TIPODETALLEVENTA READONLY,
+    @DEVOLUCION_ID INT OUTPUT
+AS
 BEGIN
-    DECLARE v_n INT DEFAULT 0;
-    DECLARE v_i INT DEFAULT 0;
-    DECLARE v_codigo VARCHAR(50);
-    DECLARE v_cantidad INT;
-    DECLARE v_precio DECIMAL(10, 2);
-    DECLARE v_vendido INT;
-    DECLARE v_devuelto INT;
-    DECLARE v_existe INT;
-    DECLARE v_total DECIMAL(10, 2) DEFAULT 0.00;
+    SET NOCOUNT ON;
 
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
+    BEGIN TRY
+        BEGIN TRANSACTION;
 
-    -- ============ 1) VALIDACIONES ============
-    SET v_n = JSON_LENGTH(p_items);
-    IF v_n IS NULL OR v_n = 0 THEN
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'LA DEVOLUCION NO TIENE ITEMS';
-    END IF;
+        -- ============ VALIDACIONES ============
+        IF NOT EXISTS (SELECT 1 FROM @DETALLES)
+        BEGIN;
+            THROW 50011, 'LA DEVOLUCION NO TIENE ITEMS', 1;
+        END;
 
-    SELECT COUNT(*) INTO v_existe FROM ventas WHERE id = p_venta_id;
-    IF v_existe = 0 THEN
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'LA VENTA NO EXISTE';
-    END IF;
+        IF NOT EXISTS (SELECT 1 FROM VENTAS WHERE ID = @VENTA_ID)
+        BEGIN;
+            THROW 50012, 'LA VENTA NO EXISTE', 1;
+        END;
 
-    WHILE v_i < v_n DO
-        SET v_codigo = JSON_UNQUOTE(JSON_EXTRACT(p_items, CONCAT('$[', v_i, '].codigo')));
-        SET v_cantidad = CAST(JSON_EXTRACT(p_items, CONCAT('$[', v_i, '].cantidad')) AS UNSIGNED);
+        IF EXISTS (SELECT 1 FROM @DETALLES WHERE CANTIDAD <= 0)
+        BEGIN;
+            THROW 50002, 'LA CANTIDAD DEBE SER MAYOR A CERO', 1;
+        END;
 
-        IF v_cantidad IS NULL OR v_cantidad <= 0 THEN
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = 'LA CANTIDAD DEBE SER MAYOR A CERO';
-        END IF;
+        -- El producto debe pertenecer a la venta y no se puede devolver
+        -- mas de lo que se vendio (vendido - ya devuelto).
+        IF EXISTS (
+            SELECT 1 FROM @DETALLES D
+            WHERE NOT EXISTS (
+                SELECT 1 FROM DETALLE_VENTAS DV
+                WHERE DV.VENTA_ID = @VENTA_ID
+                  AND DV.CODIGO_PRODUCTO = D.CODIGOPRODUCTO
+            )
+        )
+        BEGIN;
+            THROW 50013, 'EL PRODUCTO NO PERTENECE A ESA VENTA', 1;
+        END;
 
-        -- Cuanto se vendio y cuanto ya se devolvio de ese producto en esa venta
-        SELECT COALESCE(SUM(cantidad), 0) INTO v_vendido
-        FROM detalle_ventas
-        WHERE venta_id = p_venta_id AND codigo_producto = v_codigo;
+        IF EXISTS (
+            SELECT 1 FROM @DETALLES D
+            WHERE D.CANTIDAD > (
+                SELECT COALESCE(SUM(DV.CANTIDAD), 0)
+                FROM DETALLE_VENTAS DV
+                WHERE DV.VENTA_ID = @VENTA_ID
+                  AND DV.CODIGO_PRODUCTO = D.CODIGOPRODUCTO
+            ) - (
+                SELECT COALESCE(SUM(DD.CANTIDAD), 0)
+                FROM DETALLE_DEVOLUCIONES DD
+                INNER JOIN DEVOLUCIONES DV2 ON DV2.ID = DD.DEVOLUCION_ID
+                WHERE DV2.VENTA_ID = @VENTA_ID
+                  AND DD.CODIGO_PRODUCTO = D.CODIGOPRODUCTO
+            )
+        )
+        BEGIN;
+            THROW 50014, 'NO SE PUEDE DEVOLVER MAS DE LO VENDIDO', 1;
+        END;
 
-        IF v_vendido = 0 THEN
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = 'EL PRODUCTO NO PERTENECE A ESA VENTA';
-        END IF;
+        -- ============ CABECERA DE LA DEVOLUCION ============
+        DECLARE @TOTAL DECIMAL(10,2);
+        SELECT @TOTAL = SUM(D.CANTIDAD * DV.PRECIO_UNITARIO)
+        FROM @DETALLES D
+        INNER JOIN DETALLE_VENTAS DV
+            ON DV.VENTA_ID = @VENTA_ID AND DV.CODIGO_PRODUCTO = D.CODIGOPRODUCTO;
 
-        SELECT COALESCE(SUM(d.cantidad), 0) INTO v_devuelto
-        FROM detalle_devoluciones d
-        JOIN devoluciones dv ON dv.id = d.devolucion_id
-        WHERE dv.venta_id = p_venta_id AND d.codigo_producto = v_codigo;
+        INSERT INTO DEVOLUCIONES (VENTA_ID, FECHA, MOTIVO, MONTO_TOTAL)
+        VALUES (@VENTA_ID, GETDATE(), COALESCE(@MOTIVO, ''), @TOTAL);
 
-        IF v_devuelto + v_cantidad > v_vendido THEN
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = 'NO SE PUEDE DEVOLVER MAS DE LO VENDIDO';
-        END IF;
+        SET @DEVOLUCION_ID = SCOPE_IDENTITY();
 
-        SET v_i = v_i + 1;
-    END WHILE;
+        -- ============ DETALLE + REPOSICION + KARDEX ============
+        INSERT INTO DETALLE_DEVOLUCIONES (DEVOLUCION_ID, CODIGO_PRODUCTO, CANTIDAD, SUBTOTAL)
+        SELECT @DEVOLUCION_ID, D.CODIGOPRODUCTO, D.CANTIDAD,
+               D.CANTIDAD * DV.PRECIO_UNITARIO
+        FROM @DETALLES D
+        INNER JOIN DETALLE_VENTAS DV
+            ON DV.VENTA_ID = @VENTA_ID AND DV.CODIGO_PRODUCTO = D.CODIGOPRODUCTO;
 
-    -- ============ 2) TRANSACCION ============
-    START TRANSACTION;
+        UPDATE PRODUCTOS
+        SET STOCK = STOCK + D.CANTIDAD
+        FROM PRODUCTOS P
+        INNER JOIN @DETALLES D ON D.CODIGOPRODUCTO = P.CODIGO;
 
-    INSERT INTO devoluciones (venta_id, motivo, monto_total)
-    VALUES (p_venta_id, COALESCE(p_motivo, ''), 0.00);
-    SET p_devolucion_id = LAST_INSERT_ID();
+        INSERT INTO MOVIMIENTOS_INVENTARIO (CODIGO_PRODUCTO, TIPO, CANTIDAD, REFERENCIA)
+        SELECT CODIGOPRODUCTO, 'devolucion', CANTIDAD, CONCAT('Devolucion #', @DEVOLUCION_ID)
+        FROM @DETALLES;
 
-    SET v_i = 0;
-    WHILE v_i < v_n DO
-        SET v_codigo = JSON_UNQUOTE(JSON_EXTRACT(p_items, CONCAT('$[', v_i, '].codigo')));
-        SET v_cantidad = CAST(JSON_EXTRACT(p_items, CONCAT('$[', v_i, '].cantidad')) AS UNSIGNED);
+        COMMIT TRANSACTION;
+        PRINT 'DEVOLUCION REGISTRADA. MONTO: ' + CAST(@TOTAL AS VARCHAR);
 
-        SELECT precio_unitario INTO v_precio
-        FROM detalle_ventas
-        WHERE venta_id = p_venta_id AND codigo_producto = v_codigo
-        ORDER BY id
-        LIMIT 1;
-
-        INSERT INTO detalle_devoluciones (devolucion_id, codigo_producto, cantidad, subtotal)
-        VALUES (p_devolucion_id, v_codigo, v_cantidad, v_precio * v_cantidad);
-
-        UPDATE productos SET stock = stock + v_cantidad WHERE codigo = v_codigo;
-
-        INSERT INTO movimientos_inventario (codigo_producto, tipo, cantidad, referencia)
-        VALUES (v_codigo, 'devolucion', v_cantidad, CONCAT('Devolucion #', p_devolucion_id));
-
-        SET v_total = v_total + (v_precio * v_cantidad);
-        SET v_i = v_i + 1;
-    END WHILE;
-
-    UPDATE devoluciones SET monto_total = v_total WHERE id = p_devolucion_id;
-
-    COMMIT;
-
-    SELECT v_total AS monto_total;
-END$$
-
-DELIMITER ;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        PRINT 'ERROR: ' + ERROR_MESSAGE();
+        THROW;
+    END CATCH
+END
+GO

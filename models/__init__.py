@@ -135,8 +135,7 @@ class MovimientoInventario(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     codigo_producto = db.Column(db.String(50), db.ForeignKey('productos.codigo'), nullable=False)
-    tipo = db.Column(db.Enum('entrada', 'salida', 'ajuste', 'devolucion', name='tipo_movimiento'),
-                     nullable=False)
+    tipo = db.Column(db.String(20), nullable=False)
     cantidad = db.Column(db.Integer, nullable=False)
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
     referencia = db.Column(db.String(150), nullable=False, default='')
@@ -255,8 +254,7 @@ class TurnoCaja(db.Model):
     fecha_cierre = db.Column(db.DateTime, nullable=True)
     saldo_inicial = db.Column(db.Numeric(10, 2), nullable=False, default=0.00)
     saldo_final = db.Column(db.Numeric(10, 2), nullable=True)
-    estado = db.Column(db.Enum('abierto', 'cerrado', name='estado_turno'),
-                       nullable=False, default='abierto')
+    estado = db.Column(db.String(20), nullable=False, default='abierto')
 
     movimientos = db.relationship('MovimientoCaja', backref='turno', lazy=True)
 
@@ -266,8 +264,7 @@ class MovimientoCaja(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     turno_id = db.Column(db.Integer, db.ForeignKey('turnos_caja.id'), nullable=False)
-    tipo = db.Column(db.Enum('ingreso', 'egreso', 'venta', name='tipo_movimiento_caja'),
-                     nullable=False)
+    tipo = db.Column(db.String(20), nullable=False)
     monto = db.Column(db.Numeric(10, 2), nullable=False)
     descripcion = db.Column(db.String(150), nullable=False, default='')
     fecha = db.Column(db.DateTime, default=datetime.utcnow)

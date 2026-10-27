@@ -1,4 +1,3 @@
-import json
 import re
 
 from flask import Blueprint, render_template, request, flash, redirect, url_for
@@ -12,8 +11,9 @@ devoluciones_bp = Blueprint('devoluciones', __name__)
 
 
 def _mensaje_error(e):
-    m = re.search(r"\(\d+, '([^']+)'\)", str(e))
-    return m.group(1) if m else 'No se pudo registrar la devolucion. Nada se guardo.'
+    """Extrae el mensaje de error del SP (THROW) de un error de pyodbc."""
+    m = re.search(r'\[SQL Server\](.+?)(?: \(SQLSTATE|\(\d+\)|\'|$)', str(e))
+    return m.group(1).strip() if m else 'No se pudo registrar la devolucion. Nada se guardo.'
 
 
 def _devueltas(venta_id, codigo):
@@ -77,13 +77,8 @@ def devoluciones_view():
                                     venta_id=venta.id))
 
         try:
-            db.session.execute(db.text('SET @dev_id = 0'))
-            db.session.execute(
-                db.text('CALL SP_APLICARDEVOLUCION(:vid, :motivo, :items, @dev_id)'),
-                {'vid': venta.id, 'motivo': motivo or 'Devolucion desde pantalla',
-                 'items': json.dumps(items)}
-            )
-            db.session.execute(db.text('SELECT @dev_id')).scalar()
+            import sp
+            sp.aplicar_devolucion(venta.id, motivo or 'Devolucion desde pantalla', items)
             db.session.commit()
         except Exception as exc:
             db.session.rollback()

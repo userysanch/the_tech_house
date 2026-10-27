@@ -1,5 +1,10 @@
 # FASE 1: Estructura del Proyecto, Dependencias, Script SQL y Configuración de Flask
 
+> **Nota:** este documento conserva la fase tal como se planteó en clase
+> (MySQL + PyMySQL). El proyecto fue migrado a **Microsoft SQL Server 2022**
+> con autenticación de Windows y drivers `pyodbc`; ver `README.md` y
+> `DOCUMENTO_FINAL.md` para la instalación actual.
+
 ## Estructura de Carpetas del Proyecto
 
 ```

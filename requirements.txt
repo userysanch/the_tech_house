@@ -1,6 +1,6 @@
 Flask
 Flask-SQLAlchemy
 Flask-Login
-PyMySQL
+pyodbc
 openpyxl
 sqlalchemy>=2.0,<2.1

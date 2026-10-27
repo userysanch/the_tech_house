@@ -2,6 +2,7 @@ from flask import Blueprint, render_template
 from flask_login import login_required, current_user
 from extensions import db
 from models import Producto, Venta, DetalleVenta
+from sqlalchemy import cast, Date
 from datetime import datetime, date
 
 main_bp = Blueprint('main', __name__)
@@ -16,10 +17,10 @@ def index():
 
     hoy = date.today()
     ventas_hoy = db.session.query(func.coalesce(func.sum(Venta.total_venta), 0)).filter(
-        db.func.date(Venta.fecha) == hoy
+        cast(Venta.fecha, Date) == hoy
     ).scalar()
     ganancia_hoy = db.session.query(func.coalesce(func.sum(Venta.ganancia_total), 0)).filter(
-        db.func.date(Venta.fecha) == hoy
+        cast(Venta.fecha, Date) == hoy
     ).scalar()
 
     return render_template('index.html',

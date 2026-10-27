@@ -2,11 +2,14 @@ from flask import Blueprint, render_template, request
 from flask_login import login_required, current_user
 from extensions import db
 from models import DetalleVenta, Venta, Producto, Categoria
-from sqlalchemy import func
+from sqlalchemy import func, literal_column
 from datetime import datetime
 import calendar
 
 reporte_bp = Blueprint('reporte', __name__)
+
+# Clave de agrupacion mensual identica en SELECT/GROUP BY/ORDER BY (T-SQL).
+MES_KEY = literal_column("CONVERT(VARCHAR(7), ventas.fecha, 120)")
 
 MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
@@ -122,17 +125,17 @@ def reporte_view():
         for f in filas_cat
     ]
 
-    # 2) Ventas agrupadas por mes (DATE_FORMAT ... GROUP BY)
+    # 2) Ventas agrupadas por mes (FORMAT ... GROUP BY)
     filas_mes = (
         db.session.query(
-            func.date_format(Venta.fecha, '%Y-%m'),
+            MES_KEY,
             func.count(Venta.id),
             func.coalesce(func.sum(Venta.total_venta), 0),
             func.coalesce(func.sum(Venta.ganancia_total), 0),
         )
         .filter(*condiciones)
-        .group_by(func.date_format(Venta.fecha, '%Y-%m'))
-        .order_by(func.date_format(Venta.fecha, '%Y-%m').desc())
+        .group_by(MES_KEY)
+        .order_by(MES_KEY.desc())
         .all()
     )
     ventas_por_mes = []
