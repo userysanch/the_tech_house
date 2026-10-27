@@ -8,17 +8,7 @@
 USE TheTechHouse;
 GO
 
--- Tipo de tabla para enviar el detalle de la venta / devolucion
--- (equivalente a la tabla tipo TIPODETALLEVENTA de la clase)
-IF TYPE_ID('dbo.TIPODETALLEVENTA') IS NOT NULL
-    DROP TYPE dbo.TIPODETALLEVENTA;
-GO
-CREATE TYPE dbo.TIPODETALLEVENTA AS TABLE (
-    CODIGOPRODUCTO VARCHAR(50),
-    CANTIDAD INT,
-    PRECIO DECIMAL(10, 2)
-);
-GO
+-- el tipo de tabla TIPODETALLEVENTA se define en schema.sql
 
 -- ------------------------------------------------------------
 -- SP_REGISTRARVENTA
