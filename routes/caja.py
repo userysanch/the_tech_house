@@ -104,7 +104,7 @@ def caja_view():
                   'success')
             return redirect(url_for('caja.caja_view'))
 
-        # ---- CERRAR TURNO (sp_cerrar_caja) ----
+        # ---- CERRAR TURNO (SP_CERRARCAJA) ----
         if action == 'cerrar_turno':
             turno = _turno_abierto()
             if not turno:
@@ -112,7 +112,7 @@ def caja_view():
                 return redirect(url_for('caja.caja_view'))
             try:
                 db.session.execute(
-                    db.text('CALL sp_cerrar_caja(:id)'), {'id': turno.id})
+                    db.text('CALL SP_CERRARCAJA(:id)'), {'id': turno.id})
                 db.session.commit()
             except Exception as exc:
                 db.session.rollback()
@@ -206,7 +206,7 @@ def buscar_producto():
 @caja_bp.route('/registrar', methods=['POST'])
 @login_required
 def registrar_venta():
-    """Alta de venta completa via sp_registrar_venta (transaccion atómica)."""
+    """Alta de venta completa via SP_REGISTRARVENTA (transaccion atomica)."""
     data = request.json
     carrito = data.get('carrito', [])
     if not carrito:
@@ -232,7 +232,7 @@ def registrar_venta():
     try:
         db.session.execute(db.text('SET @venta_id = 0'))
         db.session.execute(
-            db.text('CALL sp_registrar_venta(:cli, :fp, :items, @venta_id)'),
+            db.text('CALL SP_REGISTRARVENTA(:cli, :fp, :items, @venta_id)'),
             {'cli': cliente_id, 'fp': forma_pago_id,
              'items': json.dumps(items)}
         )

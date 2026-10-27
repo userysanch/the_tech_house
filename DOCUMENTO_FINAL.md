@@ -1,4 +1,4 @@
-# Documento final del proyecto (material para el PDF)
+﻿# Documento final del proyecto (material para el PDF)
 
 > **The Tech House — Diseño e Implementación de una Base de Datos y una API**
 >
@@ -116,9 +116,9 @@ sección 6.1.
 
 | SP | Operación | Cambios relacionados | Garantía |
 |---|---|---|---|
-| `sp_registrar_venta` | Registrar venta y actualizar existencias | `ventas` + `detalle_ventas` + `pagos_venta` + stock + `movimientos_inventario` + `movimientos_caja` | Valida stock; COMMIT o ROLLBACK completo |
-| `sp_cerrar_caja` | Cerrar turno con saldo | Calcula `saldo_final` desde `movimientos_caja` y cambia `turnos_caja.estado` | Operación única, turno cerrado queda inmutable |
-| `sp_aplicar_devolucion` | Aplicar devolución | `devoluciones` + `detalle_devoluciones` + repone stock + kardex | Valida cantidades vendidas − devueltas; COMMIT/ROLLBACK |
+| `SP_REGISTRARVENTA` | Registrar venta y actualizar existencias | `ventas` + `detalle_ventas` + `pagos_venta` + stock + `movimientos_inventario` + `movimientos_caja` | Valida stock; COMMIT o ROLLBACK completo |
+| `SP_CERRARCAJA` | Cerrar turno con saldo | Calcula `saldo_final` desde `movimientos_caja` y cambia `turnos_caja.estado` | Operación única, turno cerrado queda inmutable |
+| `SP_APLICARDEVOLUCION` | Aplicar devolución | `devoluciones` + `detalle_devoluciones` + repone stock + kardex | Valida cantidades vendidas − devueltas; COMMIT/ROLLBACK |
 
 Se invocan desde la API (`POST /api/ventas`, `POST /api/devoluciones`) y
 desde las pantallas de Caja y Devoluciones.

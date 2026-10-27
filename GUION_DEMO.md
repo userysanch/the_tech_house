@@ -1,4 +1,4 @@
-# Guion de demostración — The Tech House
+﻿# Guion de demostración — The Tech House
 
 Guía para explicarle al ingeniero **qué es el sistema, dónde están las 20
 tablas y cómo funciona**, y para hacer la demo en vivo sin nervios.
@@ -82,7 +82,7 @@ sembrados, así que todo se ve con contenido."*
 3. Seleccionar **Cliente** (tabla `clientes`, 5) y **forma de pago**
    "Efectivo" (tabla `formas_pago`, 6).
 4. **Cobrar** → mensaje *"Venta registrada. Total: Q…"*.
-   *"Detrás se ejecutó `sp_registrar_venta`: en UNA transacción creó
+   *"Detrás se ejecutó `SP_REGISTRARVENTA`: en UNA transacción creó
    `ventas`, `detalle_ventas`, `pagos_venta`, bajó el stock, escribió el
    kardex y el movimiento de caja. Si no hubiera stock, haría ROLLBACK
    completo."*
@@ -92,14 +92,14 @@ sembrados, así que todo se ve con contenido."*
 ### Paso 5 — Devolución (45 s)
 1. Menú **Devoluciones** → elegir la venta anterior → producto `DEMO01`,
    cantidad 1 → motivo "Prueba" → **Aplicar**.
-   → *"Ejecuta `sp_aplicar_devolucion`: repone el stock y escribe el kardex
+   → *"Ejecuta `SP_APLICARDEVOLUCION`: repone el stock y escribe el kardex
    en transacción. Valida que no se devuelva más de lo vendido."*
 2. Verificar: en Inventario el stock de `DEMO01` subió; en Kardex aparece
    tipo **devolución**; en Devoluciones quedó el historial (tablas 16 y 17).
 
 ### Paso 6 — Cerrar caja (30 s)
 1. En Caja → **Cerrar turno**.
-   → *"`sp_cerrar_caja` calcula saldo_final = saldo_inicial + ingresos −
+   → *"`SP_CERRARCAJA` calcula saldo_final = saldo_inicial + ingresos −
    egresos con los movimientos del turno (tabla 20) y guarda el cierre
    (tabla 19)."*
 
@@ -133,6 +133,36 @@ validación de datos y códigos HTTP 200/400/409."*
 
 ## 3. Preguntas típicas del evaluador y posibles respuestas
 
+**¿Qué es una API?**
+Es una interfaz que expone los datos y operaciones del sistema por HTTP en
+formato JSON. Otra aplicación —por ejemplo el teléfono que uso como escáner
+inalámbrico— le manda peticiones y recibe respuestas, sin tocar la base de
+datos directamente. La mía está en `/api` con endpoints como
+`GET /api/productos` y `POST /api/ventas`.
+
+**¿Dónde está mi tabla?**
+La base se llama `the_tech_house` en MySQL y tiene 20 tablas; se ven todas
+con `SELECT * FROM productos;` en Workbench, el modelo completo está en
+`schema.sql` y en el sistema aparecen en las pantallas: productos en
+Inventario, ventas en Ventas, movimientos de caja en Caja, etc.
+
+**¿Por qué el ROLLBACK va al principio del procedimiento?**
+En MySQL esa sintaxis declara el manejador de errores al inicio: todo el
+cuerpo del procedimiento es el bloque TRY implícito. El ROLLBACK no se
+"ejecuta" al principio, se **declara ahí y queda activo**: si en cualquier
+punto (insert, update, validación) ocurre un error, salta al manejador,
+revierte todo y propaga el error. Es el equivalente al `BEGIN TRY /
+BEGIN CATCH` de SQL Server — allá el ROLLBACK está dentro del CATCH; acá,
+en el manejador que se declara arriba.
+
+**¿Cómo demuestro el ROLLBACK en vivo?**
+En Caja intento vender 9,999 unidades de un producto que tiene 10. El
+sistema responde *"STOCK INSUFICIENTE PARA UNO O MAS PRODUCTOS"* (el SP
+valida ANTES de la transacción); y si el error ocurriera dentro de la
+transacción, el manejador haría ROLLBACK: se puede verificar con
+`SELECT COUNT(*) FROM ventas;` y `SELECT stock FROM productos WHERE codigo='P001';`
+que no cambió nada.
+
 **¿Por qué 20 tablas y no menos?**
 Porque el negocio real las pide: catálogos (roles, categorías, marcas,
 proveedores, clientes, formas de pago, cajas), personas (usuarios),
@@ -141,7 +171,7 @@ detalle, pagos, devoluciones, detalle de devoluciones, pendientes del
 escáner) y caja (turnos, movimientos). Todas están referenciadas por PK/FK
 — ninguna es artificial.
 
-**¿Qué hace `sp_registrar_venta`?**
+**¿Qué hace `SP_REGISTRARVENTA`?**
 Recibe cliente, forma de pago y el arreglo de ítems; en una sola transacción
 crea la venta, sus líneas, el pago, descuenta el stock, escribe el kardex y
 el movimiento de caja; si algo falla (p. ej. stock insuficiente) hace
@@ -153,11 +183,11 @@ En la demo: intentar cobrar un producto con más unidades que las que hay —
 el SP valida antes de confirmar y devuelve *"Stock insuficiente"* sin
 modificar nada.
 
-**¿Qué hace `sp_cerrar_caja`?**
+**¿Qué hace `SP_CERRARCAJA`?**
 Suma los movimientos del turno: `saldo_final = saldo_inicial + ingresos −
 egresos` y cambia el estado a cerrado.
 
-**¿Qué hace `sp_aplicar_devolucion`?**
+**¿Qué hace `SP_APLICARDEVOLUCION`?**
 Valida que las unidades devueltas no superen lo vendido, inserta la
 devolución y su detalle, repone el stock y registra el movimiento de kardex
 — todo en una transacción.

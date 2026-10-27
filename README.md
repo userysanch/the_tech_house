@@ -1,4 +1,4 @@
-# The Tech House - Sistema POS e Inventario
+﻿# The Tech House - Sistema POS e Inventario
 
 Sistema de Punto de Venta (POS) e Inventario desarrollado con Flask, MySQL y Bootstrap 5.
 
@@ -123,7 +123,7 @@ La aplicación estará disponible en `http://localhost:5000`
 
 ### 9. **Devoluciones**
 - Historial de devoluciones y armado de una nueva sobre una venta
-- Ejecuta `sp_aplicar_devolucion` (repone stock y kardex en transacción)
+- Ejecuta `SP_APLICARDEVOLUCION` (repone stock y kardex en transacción)
 
 ### 10. **Usuarios y Promociones**
 - CRUD de usuarios con contraseña encriptada y rol asignado
@@ -167,16 +167,16 @@ Resumen por módulos:
 
 ### Procedimientos almacenados (`procedimientos.sql`)
 
-- `sp_registrar_venta` — venta completa (cabecera, detalle, stock, kardex, pago y
+- `SP_REGISTRARVENTA` — venta completa (cabecera, detalle, stock, kardex, pago y
   caja) en **una sola transacción**; hace ROLLBACK si el stock no alcanza.
-- `sp_cerrar_caja` — calcula `saldo_final = saldo_inicial + ingresos - egresos`.
-- `sp_aplicar_devolucion` — devuelve mercancía y repone el stock en transacción.
+- `SP_CERRARCAJA` — calcula `saldo_final = saldo_inicial + ingresos - egresos`.
+- `SP_APLICARDEVOLUCION` — devuelve mercancía y repone el stock en transacción.
 
 ### API JSON (prefijo `/api`)
 
 CRUD de `categorias`, `marcas`, `proveedores`, `clientes`, `productos`,
 `formas_pago`, `entradas` (alta transaccional), `ventas` (vía
-`sp_registrar_venta`) y `devoluciones`, más reportes con `GROUP BY`:
+`SP_REGISTRARVENTA`) y `devoluciones`, más reportes con `GROUP BY`:
 
 - `GET /api/reporte/ventas-por-categoria`
 - `GET /api/reporte/ventas-por-mes`

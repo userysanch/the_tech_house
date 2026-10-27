@@ -1,4 +1,4 @@
-# FASE 2: Diseño de Base de Datos, API JSON, Procedimientos Almacenados y Documentación
+﻿# FASE 2: Diseño de Base de Datos, API JSON, Procedimientos Almacenados y Documentación
 
 Sistema **The Tech House** — Punto de Venta (POS) e Inventario para una tienda de
 tecnología, construido con Flask + MySQL.
@@ -135,7 +135,7 @@ cualquier dependencia parcial y permite renglones repetidos del mismo producto.
 - `usuarios` almacena `rol_id → roles(nombre)`; el nombre del rol vive en `roles`.
 - `ventas` almacena `total_venta` y `ganancia_total` como **datos derivados
   denormalizados** que se recalculan en el mismo momento de la venta dentro de
-  `sp_registrar_venta`: son tolerados explícitamente por rendimiento, y la fuente
+  `SP_REGISTRARVENTA`: son tolerados explícitamente por rendimiento, y la fuente
   de verdad sigue siendo `detalle_ventas` (verificado en los reportes, que suman
   desde el detalle). Ningún otro atributo no clave depende transitivamente de
   otro no clave.
@@ -181,7 +181,7 @@ conocer X determina unívocamente a Y) y justificación del diseño final.
 |---|---|
 | `id → caja_id, usuario_id, fecha_apertura, fecha_cierre, saldo_inicial, saldo_final, estado` | PK simple ⇒ sin dependencias parciales (2FN) |
 | `caja_id → cajas(nombre)` / `usuario_id → usuarios(nombre)` | No se copian los nombres al turno: FK a sus catálogos (3FN) |
-| `saldo_final = saldo_inicial + SUM(movimientos.ingresos) − SUM(movimientos.egresos)` | **No** es una transitiva almacenada: el saldo se calcula **una sola vez** al cerrar el turno con `sp_cerrar_caja` y se guarda como cierre de caja (auditoría); la fuente de verdad de los movimientos sigue siendo `movimientos_caja` |
+| `saldo_final = saldo_inicial + SUM(movimientos.ingresos) − SUM(movimientos.egresos)` | **No** es una transitiva almacenada: el saldo se calcula **una sola vez** al cerrar el turno con `SP_CERRARCAJA` y se guarda como cierre de caja (auditoría); la fuente de verdad de los movimientos sigue siendo `movimientos_caja` |
 
 - **Restricciones:** `estado ENUM('abierto','cerrado')`, `NOT NULL` en
   saldo_inicial y FKs — impiden datos inválidos (requisito técnico B4).
@@ -197,9 +197,9 @@ cualquier `SQLEXCEPTION`):
 
 | Procedimiento | Parámetros | Qué hace (transacción atómica) |
 |---|---|---|
-| `sp_registrar_venta` | `cliente_id`, `forma_pago_id`, `items JSON`, `OUT venta_id` | Crea cabecera → valida stock con `SELECT ... FOR UPDATE` → inserta detalle → descuenta stock → escribe kardex (`salida`) → guarda pago → registra movimiento en caja si hay turno abierto. **Si falla un solo ítem, no se guarda nada.** |
-| `sp_cerrar_caja` | `turno_id` | Valida que el turno exista y esté abierto; calcula `saldo_final = saldo_inicial + ingresos - egresos` con `SUM()/CASE` sobre `movimientos_caja` y marca el turno como `cerrado`. |
-| `sp_aplicar_devolucion` | `venta_id`, `motivo`, `items JSON`, `OUT devolucion_id` | Valida que la venta y los ítems existan en ella → crea devolución → repone stock → escribe kardex (`devolucion`) → acumula el monto total. Todo o nada. |
+| `SP_REGISTRARVENTA` | `cliente_id`, `forma_pago_id`, `items JSON`, `OUT venta_id` | Crea cabecera → valida stock con `SELECT ... FOR UPDATE` → inserta detalle → descuenta stock → escribe kardex (`salida`) → guarda pago → registra movimiento en caja si hay turno abierto. **Si falla un solo ítem, no se guarda nada.** |
+| `SP_CERRARCAJA` | `turno_id` | Valida que el turno exista y esté abierto; calcula `saldo_final = saldo_inicial + ingresos - egresos` con `SUM()/CASE` sobre `movimientos_caja` y marca el turno como `cerrado`. |
+| `SP_APLICARDEVOLUCION` | `venta_id`, `motivo`, `items JSON`, `OUT devolucion_id` | Valida que la venta y los ítems existan en ella → crea devolución → repone stock → escribe kardex (`devolucion`) → acumula el monto total. Todo o nada. |
 
 Pruebas ejecutadas (datos eliminados al finalizar):
 - Venta de 2 unidades → stock `10 → 8`, total y ganancia correctos.
@@ -223,9 +223,9 @@ Pruebas ejecutadas (datos eliminados al finalizar):
 | GET | `/api/productos?q=` | `productos` | Buscar por nombre, código o barras. |
 | GET/POST/PUT/DELETE | `/api/productos/<codigo>` | `productos` | CRUD completo. |
 | GET/POST | `/api/entradas` | `entradas` | Alta de mercancía (transacción: entrada + stock + kardex). |
-| GET/POST | `/api/ventas` | `ventas` + `detalle_ventas` + `pagos_venta` | Alta vía `sp_registrar_venta`. |
+| GET/POST | `/api/ventas` | `ventas` + `detalle_ventas` + `pagos_venta` | Alta vía `SP_REGISTRARVENTA`. |
 | GET | `/api/ventas` | `ventas` | Últimas 200 ventas con detalle y pagos. |
-| POST | `/api/devoluciones` | `devoluciones` | Vía `sp_aplicar_devolucion`. |
+| POST | `/api/devoluciones` | `devoluciones` | Vía `SP_APLICARDEVOLUCION`. |
 | GET | `/api/reporte/ventas-por-categoria` | — | Reporte `GROUP BY`. |
 | GET | `/api/reporte/ventas-por-mes` | — | Reporte `GROUP BY`. |
 | GET | `/api/reporte/top-productos` | — | Reporte `GROUP BY ... LIMIT 10`. |
@@ -260,7 +260,7 @@ Pruebas ejecutadas (datos eliminados al finalizar):
 ```
 the_tech_house/
 ├── schema.sql          → 20 tablas + seeds (roles, formas_pago, categorias, marcas, cajas, usuarios)
-├── procedimientos.sql  → sp_registrar_venta, sp_cerrar_caja, sp_aplicar_devolucion
+├── procedimientos.sql  → SP_REGISTRARVENTA, SP_CERRARCAJA, SP_APLICARDEVOLUCION
 ├── models/__init__.py  → 20 modelos ORM (uno por tabla)
 ├── routes/api.py       → API JSON + reportes GROUP BY (blueprint `api_bp`)
 └── FASE_2.md           → este documento

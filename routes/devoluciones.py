@@ -79,7 +79,7 @@ def devoluciones_view():
         try:
             db.session.execute(db.text('SET @dev_id = 0'))
             db.session.execute(
-                db.text('CALL sp_aplicar_devolucion(:vid, :motivo, :items, @dev_id)'),
+                db.text('CALL SP_APLICARDEVOLUCION(:vid, :motivo, :items, @dev_id)'),
                 {'vid': venta.id, 'motivo': motivo or 'Devolucion desde pantalla',
                  'items': json.dumps(items)}
             )

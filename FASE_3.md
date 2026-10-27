@@ -1,4 +1,4 @@
-# FASE 3: Front end completo — las 20 tablas visibles en pantalla
+﻿# FASE 3: Front end completo — las 20 tablas visibles en pantalla
 
 Esta fase cierra la rúbrica del proyecto: **cada una de las 20 tablas tiene una
 pantalla del sistema que la muestra y/o la gestiona**, con permisos por rol
@@ -21,13 +21,13 @@ demostración para ver todo con contenido.
 | 10 | `entradas` | `/entrada` | Registrar compra (con proveedor), historial y kardex automático | ambos |
 | 11 | `movimientos_inventario` | `/kardex` | Kardex filtrable (entrada/salida/devolución) + resumen `GROUP BY` | admin |
 | 12 | `promociones` | `/promociones` (aplicadas en `/caja`) | CRUD, activar/desactivar; Caja muestra precio con descuento | admin |
-| 13 | `ventas` | `/ventas` + `/caja` | Historial con detalle; el cobro crea la venta vía `sp_registrar_venta` | ambos |
+| 13 | `ventas` | `/ventas` + `/caja` | Historial con detalle; el cobro crea la venta vía `SP_REGISTRARVENTA` | ambos |
 | 14 | `detalle_ventas` | `/ventas` (detalle) y `/reporte` | Líneas de cada venta; alimenta los reportes | ambos |
 | 15 | `pagos_venta` | `/ventas` (método) y `/caja` | Un pago por venta con su forma de pago y monto | ambos |
-| 16 | `devoluciones` | `/devoluciones` | Armar devolución + historial; ejecuta `sp_aplicar_devolucion` | admin |
+| 16 | `devoluciones` | `/devoluciones` | Armar devolución + historial; ejecuta `SP_APLICARDEVOLUCION` | admin |
 | 17 | `detalle_devoluciones` | `/devoluciones` (detalle) | Líneas devueltas por venta (valida cantidades vendidas − devueltas) | admin |
 | 18 | `ventas_pendientes` | Escáner móvil (`/scanner`) + carrito en `/caja` | Carrito temporal del escáner; se cobra desde Caja | ambos |
-| 19 | `turnos_caja` | `/caja` | Abrir turno (saldo inicial) y cerrar vía `sp_cerrar_caja` | admin |
+| 19 | `turnos_caja` | `/caja` | Abrir turno (saldo inicial) y cerrar vía `SP_CERRARCAJA` | admin |
 | 20 | `movimientos_caja` | `/caja` | Ingresos/egresos manuales y ventas del turno; saldo en vivo | admin |
 
 ## 2. Pantallas nuevas de esta fase
@@ -49,11 +49,11 @@ demostración para ver todo con contenido.
 
 ### 2.3 Caja completa (`routes/caja.py` + `templates/caja.html`)
 
-- **Turno de caja**: abrir con saldo inicial; cerrar con `sp_cerrar_caja`
+- **Turno de caja**: abrir con saldo inicial; cerrar con `SP_CERRARCAJA`
   (`saldo_final = saldo_inicial + ingresos − egresos`).
 - **Movimientos manuales** ingreso/egreso dentro del turno.
 - **Cobro**: cliente (tabla `clientes`), forma de pago (tabla `formas_pago`)
-  y carrito; el cobro ejecuta `sp_registrar_venta` en una sola transacción
+  y carrito; el cobro ejecuta `SP_REGISTRARVENTA` en una sola transacción
   (venta + detalle + stock + kardex + pago + movimiento de caja), con
   ROLLBACK si no hay stock.
 - **Promociones**: al buscar un producto se aplica la promoción activa y se
@@ -64,7 +64,7 @@ demostración para ver todo con contenido.
 
 - Historial de `devoluciones` + `detalle_devoluciones`.
 - Armar devolución desde una venta: valida cantidades (vendidas − ya
-  devueltas) y ejecuta `sp_aplicar_devolucion` (repone stock + kardex).
+  devueltas) y ejecuta `SP_APLICARDEVOLUCION` (repone stock + kardex).
 
 ### 2.5 Usuarios (`routes/usuarios.py` + `templates/usuarios.html`)
 

@@ -231,7 +231,7 @@ def entradas_crear():
 
 
 # ============================================================
-# Ventas: listado y alta via sp_registrar_venta (transaccional)
+# Ventas: listado y alta via SP_REGISTRARVENTA (transaccional)
 # ============================================================
 
 @api_bp.get('/ventas')
@@ -257,7 +257,7 @@ def ventas_crear():
     try:
         db.session.execute(db.text('SET @venta_id = 0'))
         db.session.execute(
-            db.text('CALL sp_registrar_venta(:cli, :fp, :items, @venta_id)'),
+            db.text('CALL SP_REGISTRARVENTA(:cli, :fp, :items, @venta_id)'),
             {'cli': d.get('cliente_id'), 'fp': d.get('forma_pago_id'),
              'items': _json_mod.dumps(items)}
         )
@@ -282,7 +282,7 @@ def devoluciones_crear():
     try:
         db.session.execute(db.text('SET @dev_id = 0'))
         db.session.execute(
-            db.text('CALL sp_aplicar_devolucion(:vid, :motivo, :items, @dev_id)'),
+            db.text('CALL SP_APLICARDEVOLUCION(:vid, :motivo, :items, @dev_id)'),
             {'vid': d['venta_id'], 'motivo': d.get('motivo', ''),
              'items': _json_mod.dumps(items)}
         )
