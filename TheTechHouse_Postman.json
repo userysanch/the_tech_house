@@ -1,0 +1,177 @@
+{
+  "info": {
+    "name": "The Tech House API",
+    "description": "API del sistema POS The Tech House. Ejecutá primero el request '00 Login' y después el resto.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 Login (ejecutar primero)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "username", "value": "admin" },
+            { "key": "password", "value": "admin123" }
+          ]
+        },
+        "url": {
+          "raw": "https://127.0.0.1:5000/login",
+          "protocol": "https",
+          "host": ["127", "0", "0", "1"],
+          "port": "5000",
+          "path": ["login"]
+        }
+      }
+    },
+    {
+      "name": "Productos - listar",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "https://127.0.0.1:5000/api/productos", "protocol": "https", "host": ["127","0","0","1"], "port": "5000", "path": ["api","productos"] }
+      }
+    },
+    {
+      "name": "Productos - buscar P001",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "https://127.0.0.1:5000/api/productos?q=P001", "protocol": "https", "host": ["127","0","0","1"], "port": "5000", "path": ["api","productos"], "query": [{ "key": "q", "value": "P001" }] }
+      }
+    },
+    {
+      "name": "Clientes - listar",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "https://127.0.0.1:5000/api/clientes", "protocol": "https", "host": ["127","0","0","1"], "port": "5000", "path": ["api","clientes"] }
+      }
+    },
+    {
+      "name": "Formas de pago - listar",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "https://127.0.0.1:5000/api/formas-pago", "protocol": "https", "host": ["127","0","0","1"], "port": "5000", "path": ["api","formas-pago"] }
+      }
+    },
+    {
+      "name": "Categorias - listar",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "https://127.0.0.1:5000/api/categorias", "protocol": "https", "host": ["127","0","0","1"], "port": "5000", "path": ["api","categorias"] }
+      }
+    },
+    {
+      "name": "Marcas - listar",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "https://127.0.0.1:5000/api/marcas", "protocol": "https", "host": ["127","0","0","1"], "port": "5000", "path": ["api","marcas"] }
+      }
+    },
+    {
+      "name": "Proveedores - listar",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "https://127.0.0.1:5000/api/proveedores", "protocol": "https", "host": ["127","0","0","1"], "port": "5000", "path": ["api","proveedores"] }
+      }
+    },
+    {
+      "name": "Ventas - listar ultimas 200",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "https://127.0.0.1:5000/api/ventas", "protocol": "https", "host": ["127","0","0","1"], "port": "5000", "path": ["api","ventas"] }
+      }
+    },
+    {
+      "name": "Ventas - REGISTRAR venta (POST)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cliente_id\": 4,\n  \"forma_pago_id\": 1,\n  \"items\": [\n    { \"codigo\": \"P001\", \"cantidad\": 2, \"precio\": 63.00 }\n  ]\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "https://127.0.0.1:5000/api/ventas", "protocol": "https", "host": ["127","0","0","1"], "port": "5000", "path": ["api","ventas"] }
+      }
+    },
+    {
+      "name": "Productos - crear (POST)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codigo\": \"P999\",\n  \"nombre\": \"Producto de prueba\",\n  \"costo\": 100,\n  \"margen\": 40,\n  \"categoria_id\": 1,\n  \"marca_id\": 1,\n  \"proveedor_id\": 4,\n  \"stock\": 10\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "https://127.0.0.1:5000/api/productos", "protocol": "https", "host": ["127","0","0","1"], "port": "5000", "path": ["api","productos"] }
+      }
+    },
+    {
+      "name": "Productos - actualizar P999 (PUT)",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Producto actualizado\",\n  \"precio\": 150\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "https://127.0.0.1:5000/api/productos/P999", "protocol": "https", "host": ["127","0","0","1"], "port": "5000", "path": ["api","productos","P999"] }
+      }
+    },
+    {
+      "name": "Productos - eliminar P999 (DELETE)",
+      "request": {
+        "method": "DELETE",
+        "url": { "raw": "https://127.0.0.1:5000/api/productos/P999", "protocol": "https", "host": ["127","0","0","1"], "port": "5000", "path": ["api","productos","P999"] }
+      }
+    },
+    {
+      "name": "Entradas - listar",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "https://127.0.0.1:5000/api/entradas", "protocol": "https", "host": ["127","0","0","1"], "port": "5000", "path": ["api","entradas"] }
+      }
+    },
+    {
+      "name": "Devoluciones - crear (POST)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"venta_id\": 9,\n  \"motivo\": \"Producto defectuoso\",\n  \"items\": [\n    { \"codigo\": \"P001\", \"cantidad\": 1 }\n  ]\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "https://127.0.0.1:5000/api/devoluciones", "protocol": "https", "host": ["127","0","0","1"], "port": "5000", "path": ["api","devoluciones"] }
+      }
+    },
+    {
+      "name": "Reporte - ventas por categoria",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "https://127.0.0.1:5000/api/reporte/ventas-por-categoria", "protocol": "https", "host": ["127","0","0","1"], "port": "5000", "path": ["api","reporte","ventas-por-categoria"] }
+      }
+    },
+    {
+      "name": "Reporte - ventas por mes",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "https://127.0.0.1:5000/api/reporte/ventas-por-mes", "protocol": "https", "host": ["127","0","0","1"], "port": "5000", "path": ["api","reporte","ventas-por-mes"] }
+      }
+    },
+    {
+      "name": "Reporte - top 10 productos",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "https://127.0.0.1:5000/api/reporte/top-productos", "protocol": "https", "host": ["127","0","0","1"], "port": "5000", "path": ["api","reporte","top-productos"] }
+      }
+    }
+  ]
+}
