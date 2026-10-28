@@ -53,3 +53,4 @@ Thumbs.db
 # Certificados SSL locales (claves privadas)
 *.pem
 mkcert.exe
+TheTechHouse_Postman.json
